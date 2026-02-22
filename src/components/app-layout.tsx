@@ -1,0 +1,63 @@
+"use client";
+
+import { ReactNode } from "react";
+import { HabitsProvider, useHabitsContext } from "@/contexts/habits-context";
+import { AppSidebar } from "@/components/app-sidebar";
+import { MobileSidebarTrigger } from "@/components/app-sidebar";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Sparkles } from "lucide-react";
+
+interface AppLayoutProps {
+  children: ReactNode;
+}
+
+function AppLayoutInner({ children }: AppLayoutProps) {
+  const { habits, isLoaded } = useHabitsContext();
+
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4 animate-fade-in">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <Sparkles className="w-6 h-6 text-primary animate-pulse" />
+          </div>
+          <p className="text-muted-foreground font-medium">
+            Loading your habits...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen bg-background">
+      {/* Sidebar - Desktop only */}
+      <AppSidebar habits={habits} />
+
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top bar */}
+        <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
+          <div className="flex items-center gap-2 lg:hidden">
+            <MobileSidebarTrigger habits={habits} />
+          </div>
+          <div className="flex-1" />
+          <ThemeToggle />
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export function AppLayout({ children }: AppLayoutProps) {
+  return (
+    <HabitsProvider>
+      <AppLayoutInner>{children}</AppLayoutInner>
+    </HabitsProvider>
+  );
+}

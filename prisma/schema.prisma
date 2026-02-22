@@ -1,0 +1,100 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Enums for Habit configuration
+enum RepeatType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  CUSTOM
+}
+
+enum CompletionType {
+  YES_NO
+  X_OCCURRENCES
+}
+
+enum EndConditionType {
+  DATE
+  TOTAL_DAYS
+  TOTAL_VALUE
+  STREAK
+}
+
+// Main Habit model
+model Habit {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  isGoodHabit Boolean @default(true)
+  color       String? // Hex color code for the habit
+  icon        String? // Lucide icon name
+
+  // Repeat configuration
+  repeatType         RepeatType @default(DAILY)
+  repeatWeekDay      Int? // 0-6 for Sunday-Saturday (for WEEKLY)
+  repeatMonthDay     Int? // 1-31 (for MONTHLY)
+  customIntervalDays Int? // Every X days (for CUSTOM)
+  customDaysOfWeek   Int[] // Array of weekdays 0-6 (for CUSTOM)
+
+  // Completion configuration
+  completionType    CompletionType @default(YES_NO)
+  targetOccurrences Int? // Target for X_OCCURRENCES type
+
+  // Date configuration
+  startDate         DateTime          @default(now())
+  endConditionType  EndConditionType?
+  endConditionValue String? // Stores date string or numeric value
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tags           HabitTag[]
+  progressEvents HabitProgressEvent[]
+}
+
+// Tag model for categorizing habits
+model HabitTag {
+  id    String  @id @default(cuid())
+  name  String  @unique
+  color String? // Hex color code
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  habits Habit[]
+}
+
+// Progress event model for tracking daily habit completion
+model HabitProgressEvent {
+  id      String   @id @default(cuid())
+  habitId String
+  date    DateTime // The day being logged
+  value   Int      @default(1) // User-entered amount; 1 for yes/no completion
+  note    String?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  // Relations
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  // Ensure one progress event per habit per day
+  @@unique([habitId, date])
+}
