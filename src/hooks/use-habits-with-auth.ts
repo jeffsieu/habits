@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useOptimistic,
+  startTransition,
+} from "react";
 import { useSession } from "next-auth/react";
 import {
   Habit,
@@ -144,6 +151,96 @@ export function useHabitsWithAuth(
   );
 
   const { habits, tags, progressEvents } = data;
+
+  // Optimistic state for immediate UI updates
+  type HabitAction =
+    | { type: "add"; habit: Habit }
+    | { type: "update"; habit: Habit }
+    | { type: "delete"; id: string }
+    | { type: "reorder"; habitIds: string[] };
+
+  const [optimisticHabits, addOptimisticHabit] = useOptimistic(
+    habits,
+    (state: Habit[], action: HabitAction) => {
+      switch (action.type) {
+        case "add":
+          return [...state, action.habit];
+        case "update":
+          return state.map((h) =>
+            h.id === action.habit.id ? action.habit : h,
+          );
+        case "delete":
+          return state.filter((h) => h.id !== action.id);
+        case "reorder": {
+          const habitMap = new Map(state.map((h) => [h.id, h]));
+          const reordered: Habit[] = [];
+          for (const id of action.habitIds) {
+            const habit = habitMap.get(id);
+            if (habit) {
+              reordered.push(habit);
+              habitMap.delete(id);
+            }
+          }
+          for (const habit of habitMap.values()) {
+            reordered.push(habit);
+          }
+          return reordered;
+        }
+        default:
+          return state;
+      }
+    },
+  );
+
+  type TagAction =
+    | { type: "add"; tag: HabitTag }
+    | { type: "update"; tag: HabitTag }
+    | { type: "delete"; id: string };
+
+  const [optimisticTags, addOptimisticTag] = useOptimistic(
+    tags,
+    (state: HabitTag[], action: TagAction) => {
+      switch (action.type) {
+        case "add":
+          return [...state, action.tag];
+        case "update":
+          return state.map((t) => (t.id === action.tag.id ? action.tag : t));
+        case "delete":
+          return state.filter((t) => t.id !== action.id);
+        default:
+          return state;
+      }
+    },
+  );
+
+  type ProgressAction =
+    | { type: "upsert"; progress: HabitProgressEvent }
+    | { type: "delete"; id: string };
+
+  const [optimisticProgress, addOptimisticProgress] = useOptimistic(
+    progressEvents,
+    (state: HabitProgressEvent[], action: ProgressAction) => {
+      switch (action.type) {
+        case "upsert": {
+          const existingIndex = state.findIndex(
+            (p) =>
+              p.habitId === action.progress.habitId &&
+              p.date === action.progress.date,
+          );
+          if (existingIndex >= 0) {
+            const updated = [...state];
+            updated[existingIndex] = action.progress;
+            return updated;
+          }
+          return [...state, action.progress];
+        }
+        case "delete":
+          return state.filter((p) => p.id !== action.id);
+        default:
+          return state;
+      }
+    },
+  );
 
   // Wrapper setters
   const setHabits = useCallback(
@@ -310,40 +407,60 @@ export function useHabitsWithAuth(
 
   const addHabit = useCallback(
     async (input: CreateHabitInput): Promise<Habit> => {
+      const now = new Date().toISOString();
+      const optimisticHabit: Habit = {
+        id: generateId(),
+        name: input.name,
+        description: input.description || null,
+        isGoodHabit: input.isGoodHabit,
+        color: input.color || null,
+        icon: input.icon || null,
+        recordingType: input.recordingType,
+        goalInterval: input.goalInterval,
+        goalTarget: input.goalTarget ?? null,
+        customIntervalDays: input.customIntervalDays ?? null,
+        scheduledDaysOfWeek: input.scheduledDaysOfWeek || [],
+        startDate: input.startDate,
+        endConditionType: input.endConditionType || null,
+        endConditionValue: input.endConditionValue || null,
+        createdAt: now,
+        updatedAt: now,
+        tagIds: input.tagIds || [],
+      };
+
+      // Apply optimistic update immediately
+      startTransition(() => {
+        addOptimisticHabit({ type: "add", habit: optimisticHabit });
+      });
+
       if (isAuthenticated) {
         const newHabit = await createHabitDb(input);
         setHabits((prev) => [...prev, newHabit]);
         return newHabit;
       } else {
-        const now = new Date().toISOString();
-        const newHabit: Habit = {
-          id: generateId(),
-          name: input.name,
-          description: input.description || null,
-          isGoodHabit: input.isGoodHabit,
-          color: input.color || null,
-          icon: input.icon || null,
-          recordingType: input.recordingType,
-          goalInterval: input.goalInterval,
-          goalTarget: input.goalTarget ?? null,
-          customIntervalDays: input.customIntervalDays ?? null,
-          scheduledDaysOfWeek: input.scheduledDaysOfWeek || [],
-          startDate: input.startDate,
-          endConditionType: input.endConditionType || null,
-          endConditionValue: input.endConditionValue || null,
-          createdAt: now,
-          updatedAt: now,
-          tagIds: input.tagIds || [],
-        };
-        setHabits((prev) => [...prev, newHabit]);
-        return newHabit;
+        setHabits((prev) => [...prev, optimisticHabit]);
+        return optimisticHabit;
       }
     },
-    [isAuthenticated, setHabits],
+    [isAuthenticated, setHabits, addOptimisticHabit],
   );
 
   const updateHabit = useCallback(
     async (input: UpdateHabitInput): Promise<Habit | null> => {
+      const existingHabit = habits.find((h) => h.id === input.id);
+      if (!existingHabit) return null;
+
+      const optimisticUpdate: Habit = {
+        ...existingHabit,
+        ...input,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Apply optimistic update immediately
+      startTransition(() => {
+        addOptimisticHabit({ type: "update", habit: optimisticUpdate });
+      });
+
       if (isAuthenticated) {
         const updated = await updateHabitInDb(input);
         if (updated) {
@@ -353,40 +470,38 @@ export function useHabitsWithAuth(
         }
         return updated;
       } else {
-        const existingIndex = habits.findIndex((h) => h.id === input.id);
-        if (existingIndex === -1) return null;
-
-        const updated: Habit = {
-          ...habits[existingIndex],
-          ...input,
-          updatedAt: new Date().toISOString(),
-        };
-
-        setHabits((prev) => {
-          const newHabits = [...prev];
-          newHabits[existingIndex] = updated;
-          return newHabits;
-        });
-
-        return updated;
+        setHabits((prev) =>
+          prev.map((h) => (h.id === input.id ? optimisticUpdate : h)),
+        );
+        return optimisticUpdate;
       }
     },
-    [isAuthenticated, habits, setHabits],
+    [isAuthenticated, habits, setHabits, addOptimisticHabit],
   );
 
   const deleteHabit = useCallback(
     async (id: string): Promise<void> => {
+      // Apply optimistic update immediately
+      startTransition(() => {
+        addOptimisticHabit({ type: "delete", id });
+      });
+
       if (isAuthenticated) {
         await deleteHabitFromDb(id);
       }
       setHabits((prev) => prev.filter((h) => h.id !== id));
       setProgressEvents((prev) => prev.filter((p) => p.habitId !== id));
     },
-    [isAuthenticated, setHabits, setProgressEvents],
+    [isAuthenticated, setHabits, setProgressEvents, addOptimisticHabit],
   );
 
   const reorderHabits = useCallback(
     (habitIds: string[]): void => {
+      // Apply optimistic update immediately
+      startTransition(() => {
+        addOptimisticHabit({ type: "reorder", habitIds });
+      });
+
       setHabits((prev) => {
         const habitMap = new Map(prev.map((h) => [h.id, h]));
         const reordered: Habit[] = [];
@@ -403,48 +518,55 @@ export function useHabitsWithAuth(
         return reordered;
       });
     },
-    [setHabits],
+    [setHabits, addOptimisticHabit],
   );
 
   const getHabit = useCallback(
-    (id: string): Habit | undefined => habits.find((h) => h.id === id),
-    [habits],
+    (id: string): Habit | undefined =>
+      optimisticHabits.find((h) => h.id === id),
+    [optimisticHabits],
   );
 
   const getHabitWithTags = useCallback(
     (id: string): HabitWithTags | undefined => {
-      const habit = habits.find((h) => h.id === id);
+      const habit = optimisticHabits.find((h) => h.id === id);
       if (!habit) return undefined;
       return {
         ...habit,
-        tags: tags.filter((t) => habit.tagIds.includes(t.id)),
+        tags: optimisticTags.filter((t) => habit.tagIds.includes(t.id)),
       };
     },
-    [habits, tags],
+    [optimisticHabits, optimisticTags],
   );
 
   // ============ Tag CRUD ============
 
   const addTag = useCallback(
     async (input: CreateTagInput): Promise<HabitTag> => {
+      const now = new Date().toISOString();
+      const optimisticTag: HabitTag = {
+        id: generateId(),
+        name: input.name,
+        color: input.color || null,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      // Apply optimistic update immediately
+      startTransition(() => {
+        addOptimisticTag({ type: "add", tag: optimisticTag });
+      });
+
       if (isAuthenticated) {
         const newTag = await createTagDb(input);
         setTags((prev) => [...prev, newTag]);
         return newTag;
       } else {
-        const now = new Date().toISOString();
-        const newTag: HabitTag = {
-          id: generateId(),
-          name: input.name,
-          color: input.color || null,
-          createdAt: now,
-          updatedAt: now,
-        };
-        setTags((prev) => [...prev, newTag]);
-        return newTag;
+        setTags((prev) => [...prev, optimisticTag]);
+        return optimisticTag;
       }
     },
-    [isAuthenticated, setTags],
+    [isAuthenticated, setTags, addOptimisticTag],
   );
 
   const updateTag = useCallback(
@@ -452,6 +574,20 @@ export function useHabitsWithAuth(
       id: string,
       input: Partial<CreateTagInput>,
     ): Promise<HabitTag | null> => {
+      const existingTag = tags.find((t) => t.id === id);
+      if (!existingTag) return null;
+
+      const optimisticUpdate: HabitTag = {
+        ...existingTag,
+        ...input,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Apply optimistic update immediately
+      startTransition(() => {
+        addOptimisticTag({ type: "update", tag: optimisticUpdate });
+      });
+
       if (isAuthenticated) {
         const updated = await updateTagInDb(id, input);
         if (updated) {
@@ -461,29 +597,22 @@ export function useHabitsWithAuth(
         }
         return updated;
       } else {
-        const existingIndex = tags.findIndex((t) => t.id === id);
-        if (existingIndex === -1) return null;
-
-        const updated: HabitTag = {
-          ...tags[existingIndex],
-          ...input,
-          updatedAt: new Date().toISOString(),
-        };
-
-        setTags((prev) => {
-          const newTags = [...prev];
-          newTags[existingIndex] = updated;
-          return newTags;
-        });
-
-        return updated;
+        setTags((prev) =>
+          prev.map((t) => (t.id === id ? optimisticUpdate : t)),
+        );
+        return optimisticUpdate;
       }
     },
-    [isAuthenticated, tags, setTags],
+    [isAuthenticated, tags, setTags, addOptimisticTag],
   );
 
   const deleteTag = useCallback(
     async (id: string): Promise<void> => {
+      // Apply optimistic update immediately
+      startTransition(() => {
+        addOptimisticTag({ type: "delete", id });
+      });
+
       if (isAuthenticated) {
         await deleteTagFromDb(id);
       }
@@ -496,18 +625,38 @@ export function useHabitsWithAuth(
         })),
       );
     },
-    [isAuthenticated, setTags, setHabits],
+    [isAuthenticated, setTags, setHabits, addOptimisticTag],
   );
 
   const getTag = useCallback(
-    (id: string): HabitTag | undefined => tags.find((t) => t.id === id),
-    [tags],
+    (id: string): HabitTag | undefined =>
+      optimisticTags.find((t) => t.id === id),
+    [optimisticTags],
   );
 
   // ============ Progress Operations ============
 
   const logProgress = useCallback(
     async (input: LogProgressInput): Promise<HabitProgressEvent> => {
+      // Find existing progress to get ID if updating
+      const existingProgress = progressEvents.find(
+        (p) => p.habitId === input.habitId && p.date === input.date,
+      );
+
+      const optimisticProgress: HabitProgressEvent = {
+        id: existingProgress?.id ?? generateId(),
+        habitId: input.habitId,
+        date: input.date,
+        value: input.value,
+        note: input.note || null,
+        createdAt: existingProgress?.createdAt ?? new Date().toISOString(),
+      };
+
+      // Apply optimistic update immediately
+      startTransition(() => {
+        addOptimisticProgress({ type: "upsert", progress: optimisticProgress });
+      });
+
       if (isAuthenticated) {
         const newProgress = await logProgressInDb(input);
         setProgressEvents((prev) => {
@@ -523,39 +672,21 @@ export function useHabitsWithAuth(
         });
         return newProgress;
       } else {
-        const existingIndex = progressEvents.findIndex(
-          (p) => p.habitId === input.habitId && p.date === input.date,
-        );
-
-        const newProgress: HabitProgressEvent = {
-          id:
-            existingIndex >= 0
-              ? progressEvents[existingIndex].id
-              : generateId(),
-          habitId: input.habitId,
-          date: input.date,
-          value: input.value,
-          note: input.note || null,
-          createdAt:
-            existingIndex >= 0
-              ? progressEvents[existingIndex].createdAt
-              : new Date().toISOString(),
-        };
-
-        if (existingIndex >= 0) {
-          setProgressEvents((prev) => {
+        setProgressEvents((prev) => {
+          const existingIndex = prev.findIndex(
+            (p) => p.habitId === input.habitId && p.date === input.date,
+          );
+          if (existingIndex >= 0) {
             const updated = [...prev];
-            updated[existingIndex] = newProgress;
+            updated[existingIndex] = optimisticProgress;
             return updated;
-          });
-        } else {
-          setProgressEvents((prev) => [...prev, newProgress]);
-        }
-
-        return newProgress;
+          }
+          return [...prev, optimisticProgress];
+        });
+        return optimisticProgress;
       }
     },
-    [isAuthenticated, progressEvents, setProgressEvents],
+    [isAuthenticated, progressEvents, setProgressEvents, addOptimisticProgress],
   );
 
   const updateProgress = useCallback(
@@ -587,45 +718,60 @@ export function useHabitsWithAuth(
         ...input,
       };
 
+      // Apply optimistic update
+      startTransition(() => {
+        addOptimisticProgress({ type: "upsert", progress: updated });
+      });
       setProgressEvents((prev) => prev.map((p) => (p.id === id ? updated : p)));
 
       return updated;
     },
-    [isAuthenticated, progressEvents, setProgressEvents, logProgress],
+    [
+      isAuthenticated,
+      progressEvents,
+      setProgressEvents,
+      logProgress,
+      addOptimisticProgress,
+    ],
   );
 
   const deleteProgress = useCallback(
     async (id: string): Promise<void> => {
+      // Apply optimistic update immediately
+      startTransition(() => {
+        addOptimisticProgress({ type: "delete", id });
+      });
+
       if (isAuthenticated) {
         await deleteProgressFromDb(id);
       }
       setProgressEvents((prev) => prev.filter((p) => p.id !== id));
     },
-    [isAuthenticated, setProgressEvents],
+    [isAuthenticated, setProgressEvents, addOptimisticProgress],
   );
 
   const getProgressForHabit = useCallback(
     (habitId: string): HabitProgressEvent[] =>
-      progressEvents.filter((p) => p.habitId === habitId),
-    [progressEvents],
+      optimisticProgress.filter((p) => p.habitId === habitId),
+    [optimisticProgress],
   );
 
   const getProgressForDate = useCallback(
     (date: string): HabitProgressEvent[] =>
-      progressEvents.filter((p) => p.date === date),
-    [progressEvents],
+      optimisticProgress.filter((p) => p.date === date),
+    [optimisticProgress],
   );
 
   const getProgressForHabitOnDate = useCallback(
     (habitId: string, date: string): HabitProgressEvent | undefined =>
-      progressEvents.find((p) => p.habitId === habitId && p.date === date),
-    [progressEvents],
+      optimisticProgress.find((p) => p.habitId === habitId && p.date === date),
+    [optimisticProgress],
   );
 
   return {
-    habits,
-    tags,
-    progressEvents,
+    habits: optimisticHabits,
+    tags: optimisticTags,
+    progressEvents: optimisticProgress,
     isLoaded,
     isAuthenticated,
     pendingLocalData,
