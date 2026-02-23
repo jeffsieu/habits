@@ -53,7 +53,7 @@ interface HabitFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: CreateHabitInput) => void;
-  onCreateTag: (name: string, color?: string) => HabitTag;
+  onCreateTag: (name: string, color?: string) => HabitTag | Promise<HabitTag>;
   tags: HabitTag[];
   editingHabit?: Habit | null;
 }
@@ -109,7 +109,7 @@ export function HabitForm({
 interface HabitFormContentProps {
   onSubmit: (input: CreateHabitInput) => void;
   onOpenChange: (open: boolean) => void;
-  onCreateTag: (name: string, color?: string) => HabitTag;
+  onCreateTag: (name: string, color?: string) => HabitTag | Promise<HabitTag>;
   tags: HabitTag[];
   editingHabit?: Habit | null;
 }
@@ -187,9 +187,9 @@ function HabitFormContent({
     updateField("tagIds", updated);
   };
 
-  const handleCreateTag = () => {
+  const handleCreateTag = async () => {
     if (newTagName.trim()) {
-      const tag = onCreateTag(newTagName.trim());
+      const tag = await onCreateTag(newTagName.trim());
       toggleTag(tag.id);
       setNewTagName("");
     }
@@ -681,7 +681,9 @@ function HabitFormContent({
                             mode="single"
                             selected={
                               formData.endConditionValue
-                                ? parseDate(formData.endConditionValue as string)
+                                ? parseDate(
+                                    formData.endConditionValue as string,
+                                  )
                                 : undefined
                             }
                             onSelect={(date) =>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useHabitsContext } from "@/contexts/habits-context";
 import { HabitGridView } from "@/components/habit-grid-view";
 import { HabitForm } from "@/components/habit-form";
+import { SyncPromptDialog } from "@/components/sync-prompt-dialog";
 import { CreateHabitInput } from "@/types/habit";
 
 export function HomeContent() {
@@ -11,6 +12,10 @@ export function HomeContent() {
     habits,
     tags,
     progressEvents,
+    pendingLocalData,
+    isSyncing,
+    syncLocalData,
+    dismissSync,
     addHabit,
     addTag,
     logProgress,
@@ -68,6 +73,16 @@ export function HomeContent() {
         tags={tags}
         editingHabit={null}
       />
+
+      {/* Sync Prompt Dialog */}
+      {pendingLocalData && (
+        <SyncPromptDialog
+          pendingData={pendingLocalData}
+          isSyncing={isSyncing}
+          onSync={syncLocalData}
+          onDismiss={dismissSync}
+        />
+      )}
     </div>
   );
 }

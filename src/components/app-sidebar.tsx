@@ -34,16 +34,17 @@ import {
   Tag,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { SidebarAuth } from "@/components/sidebar-auth";
 
 interface AppSidebarProps {
   habits: Habit[];
   tags: HabitTag[];
   progressEvents: HabitProgressEvent[];
-  onAddTag: (name: string, color?: string) => HabitTag;
+  onAddTag: (name: string, color?: string) => HabitTag | Promise<HabitTag>;
   onUpdateTag: (
     id: string,
     input: Partial<{ name: string; color?: string }>,
-  ) => void;
+  ) => void | Promise<HabitTag | null>;
 }
 
 function SidebarContent({
@@ -59,11 +60,11 @@ function SidebarContent({
   habits: Habit[];
   tags: HabitTag[];
   progressEvents: HabitProgressEvent[];
-  onAddTag: (name: string, color?: string) => HabitTag;
+  onAddTag: (name: string, color?: string) => HabitTag | Promise<HabitTag>;
   onUpdateTag: (
     id: string,
     input: Partial<{ name: string; color?: string }>,
-  ) => void;
+  ) => void | Promise<HabitTag | null>;
   expandedTags: Set<string>;
   onToggleTag: (tagId: string) => void;
   onLinkClick?: () => void;
@@ -188,10 +189,14 @@ function SidebarContent({
                         />
                       </div>
                       <span className="truncate flex-1">{habit.name}</span>
-                      <div className={cn(
-                        "flex items-center gap-1",
-                        isStreakSecure(habit, progressEvents) ? "text-warning" : "text-muted-foreground"
-                      )}>
+                      <div
+                        className={cn(
+                          "flex items-center gap-1",
+                          isStreakSecure(habit, progressEvents)
+                            ? "text-warning"
+                            : "text-muted-foreground",
+                        )}
+                      >
                         <Flame className="w-3 h-3" />
                         <span className="text-xs font-medium tabular-nums">
                           {streak}
@@ -315,6 +320,9 @@ function SidebarContent({
           </div>
         </nav>
       </ScrollArea>
+
+      {/* Auth Section */}
+      <SidebarAuth />
 
       {/* Create Tag Dialog */}
       <Dialog

@@ -13,6 +13,62 @@ datasource db {
   provider = "postgresql"
 }
 
+// Auth.js models
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+  habits   Habit[]
+  tags     HabitTag[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
 // Enums for Habit configuration
 enum RepeatType {
   DAILY
@@ -42,6 +98,10 @@ model Habit {
   color       String? // Hex color code for the habit
   icon        String? // Lucide icon name
 
+  // User association (nullable for migration from localStorage)
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Repeat configuration
   repeatType         RepeatType @default(DAILY)
   repeatWeekDay      Int? // 0-6 for Sunday-Saturday (for WEEKLY)
@@ -65,13 +125,19 @@ model Habit {
   // Relations
   tags           HabitTag[]
   progressEvents HabitProgressEvent[]
+
+  @@index([userId])
 }
 
 // Tag model for categorizing habits
 model HabitTag {
   id    String  @id @default(cuid())
-  name  String  @unique
+  name  String
   color String? // Hex color code
+
+  // User association (nullable for migration from localStorage)
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -79,6 +145,10 @@ model HabitTag {
 
   // Relations
   habits Habit[]
+
+  // Unique tag name per user
+  @@unique([userId, name])
+  @@index([userId])
 }
 
 // Progress event model for tracking daily habit completion

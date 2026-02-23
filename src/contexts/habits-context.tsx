@@ -1,12 +1,16 @@
 "use client";
 
 import { createContext, useContext, ReactNode } from "react";
-import { useHabits, HabitsState, HabitsActions } from "@/hooks/use-habits";
+import {
+  useHabitsWithAuth,
+  HabitsState,
+  HabitsActions,
+} from "@/hooks/use-habits-with-auth";
 
 const HabitsContext = createContext<(HabitsState & HabitsActions) | null>(null);
 
 export function HabitsProvider({ children }: { children: ReactNode }) {
-  const habitsState = useHabits();
+  const habitsState = useHabitsWithAuth();
 
   return (
     <HabitsContext.Provider value={habitsState}>
