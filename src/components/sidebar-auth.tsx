@@ -25,6 +25,7 @@ export function SidebarAuth() {
               src={user.image}
               alt={user.name || "User"}
               className="w-8 h-8 rounded-full"
+              referrerPolicy="no-referrer"
             />
           ) : (
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
