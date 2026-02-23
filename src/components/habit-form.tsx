@@ -10,37 +10,43 @@ import {
   EndConditionType,
   WEEKDAY_NAMES,
 } from "@/types/habit";
-import { normalizeDate } from "@/lib/habit-utils";
-import { HABIT_ICONS, HABIT_ICON_OPTIONS, HABIT_COLORS, HabitIconDisplay } from "@/lib/habit-icons";
+import { normalizeDate, parseDate, formatDate } from "@/lib/habit-utils";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  HABIT_ICONS,
+  HABIT_ICON_OPTIONS,
+  HABIT_COLORS,
+  HabitIconDisplay,
+} from "@/lib/habit-icons";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
-import { Separator } from "@/components/ui/separator";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CalendarIcon, Plus, ChevronDown } from "lucide-react";
+import {
+  CalendarIcon,
+  Plus,
+  ChevronDown,
+  X,
+  Repeat,
+  Target,
+  CalendarDays,
+  Tag,
+  Sparkles,
+  ThumbsUp,
+  ThumbsDown,
+  Check,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface HabitFormProps {
@@ -59,7 +65,7 @@ const DEFAULT_FORM_STATE: CreateHabitInput = {
   color: undefined,
   icon: undefined,
   repeatType: RepeatType.DAILY,
-  repeatWeekDay: 1, // Monday
+  repeatWeekDay: 1,
   repeatMonthDay: 1,
   customIntervalDays: 1,
   customDaysOfWeek: [],
@@ -79,18 +85,14 @@ export function HabitForm({
   tags,
   editingHabit,
 }: HabitFormProps) {
-  // Use a key to reset the form content when the editing habit changes
   const formKey = editingHabit?.id ?? "new";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle>
-            {editingHabit ? "Edit Habit" : "Create New Habit"}
-          </DialogTitle>
-        </DialogHeader>
-
+      <DialogContent className="max-w-md p-0 gap-0 overflow-hidden">
+        <DialogTitle className="sr-only">
+          {editingHabit ? "Edit Habit" : "Create New Habit"}
+        </DialogTitle>
         <HabitFormContent
           key={formKey}
           onSubmit={onSubmit}
@@ -120,8 +122,9 @@ function HabitFormContent({
   editingHabit,
 }: HabitFormContentProps) {
   const [newTagName, setNewTagName] = useState("");
+  const [showIconPicker, setShowIconPicker] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
-  // Compute initial form state based on editing habit
   const initialFormData: CreateHabitInput = editingHabit
     ? {
         name: editingHabit.name,
@@ -150,7 +153,6 @@ function HabitFormContent({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     const submitData: CreateHabitInput = {
       ...formData,
       endConditionType: hasEndCondition ? formData.endConditionType : undefined,
@@ -158,7 +160,6 @@ function HabitFormContent({
         ? formData.endConditionValue
         : undefined,
     };
-
     onSubmit(submitData);
     onOpenChange(false);
   };
@@ -194,66 +195,88 @@ function HabitFormContent({
     }
   };
 
+  const currentColor = formData.color || "#C26A4A";
+
   return (
-    <ScrollArea className="max-h-[calc(90vh-120px)]">
-      <form onSubmit={handleSubmit} className="space-y-6 pr-4">
-        {/* Basic Info */}
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Name *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => updateField("name", e.target.value)}
-              placeholder="e.g., Drink water"
-              required
-            />
-          </div>
+    <form onSubmit={handleSubmit} className="flex flex-col">
+      {/* Hero Header - Icon & Color Picker */}
+      <div
+        className="relative px-6 pt-8 pb-6 transition-colors duration-300"
+        style={{ backgroundColor: `${currentColor}15` }}
+      >
+        {/* Close button */}
+        <button
+          type="button"
+          onClick={() => onOpenChange(false)}
+          className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-black/5 transition-colors"
+        >
+          <X className="w-4 h-4 text-muted-foreground" />
+        </button>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Input
-              id="description"
-              value={formData.description}
-              onChange={(e) => updateField("description", e.target.value)}
-              placeholder="Optional description"
-            />
-          </div>
+        <div className="flex flex-col items-center gap-4">
+          {/* Large Icon Button */}
+          <Popover open={showIconPicker} onOpenChange={setShowIconPicker}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg"
+                style={{
+                  backgroundColor: currentColor,
+                  color: "white",
+                }}
+              >
+                <HabitIconDisplay
+                  iconName={formData.icon}
+                  className="w-10 h-10"
+                />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-4" align="center">
+              <div className="space-y-4">
+                {/* Colors */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Color
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    {HABIT_COLORS.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => updateField("color", color)}
+                        className={cn(
+                          "w-8 h-8 rounded-full transition-all duration-150 hover:scale-110",
+                          formData.color === color &&
+                            "ring-2 ring-offset-2 ring-foreground",
+                        )}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
 
-          {/* Icon and Color */}
-          <div className="space-y-2">
-            <Label>Icon & Color</Label>
-            <div className="flex items-center gap-2">
-              {/* Icon Picker */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-12 h-12 p-0"
-                    style={{
-                      backgroundColor: formData.color ? `${formData.color}15` : undefined,
-                      color: formData.color || undefined,
-                    }}
-                  >
-                    <HabitIconDisplay iconName={formData.icon} className="w-5 h-5" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64 p-3" align="start">
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Choose an icon</Label>
-                    <div className="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
+                {/* Icons */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Icon
+                  </Label>
+                  <ScrollArea className="h-40">
+                    <div className="grid grid-cols-8 gap-1.5">
                       {HABIT_ICON_OPTIONS.map((iconName) => {
                         const IconComponent = HABIT_ICONS[iconName];
                         return (
                           <button
                             key={iconName}
                             type="button"
-                            onClick={() => updateField("icon", iconName)}
+                            onClick={() => {
+                              updateField("icon", iconName);
+                              setShowIconPicker(false);
+                            }}
                             className={cn(
-                              "w-7 h-7 rounded flex items-center justify-center transition-colors",
+                              "w-7 h-7 rounded-lg flex items-center justify-center transition-colors",
                               formData.icon === iconName
                                 ? "bg-primary text-primary-foreground"
-                                : "hover:bg-muted"
+                                : "hover:bg-muted",
                             )}
                           >
                             <IconComponent className="w-4 h-4" />
@@ -261,440 +284,489 @@ function HabitFormContent({
                         );
                       })}
                     </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                  </ScrollArea>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
 
-              {/* Color Picker */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="flex-1 justify-between"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-4 h-4 rounded-full border"
-                        style={{ backgroundColor: formData.color || "#94a3b8" }}
-                      />
-                      <span className="text-sm">
-                        {formData.color || "Default color"}
-                      </span>
-                    </div>
-                    <ChevronDown className="w-4 h-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48 p-3" align="start">
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Choose a color</Label>
-                    <div className="grid grid-cols-6 gap-1.5">
-                      {HABIT_COLORS.map((color) => (
-                        <button
-                          key={color}
-                          type="button"
-                          onClick={() => updateField("color", color)}
-                          className={cn(
-                            "w-6 h-6 rounded-full transition-transform hover:scale-110",
-                            formData.color === color && "ring-2 ring-offset-2 ring-primary"
-                          )}
-                          style={{ backgroundColor: color }}
-                        />
-                      ))}
-                    </div>
-                    {formData.color && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="w-full mt-2"
-                        onClick={() => updateField("color", undefined)}
-                      >
-                        Clear color
-                      </Button>
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
+          {/* Habit Name Input - Centered, minimal */}
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => updateField("name", e.target.value)}
+            placeholder="Habit name"
+            className="w-full text-center text-xl font-display font-semibold bg-transparent border-none outline-none placeholder:text-muted-foreground/50"
+            required
+            autoFocus
+          />
 
-          <div className="flex items-center justify-between">
-            <Label htmlFor="isGoodHabit">Habit type</Label>
-            <div className="flex items-center gap-2">
-              <span
-                className={cn(
-                  "text-sm",
-                  !formData.isGoodHabit && "text-destructive font-medium",
-                )}
-              >
-                Bad
-              </span>
-              <Switch
-                id="isGoodHabit"
-                checked={formData.isGoodHabit}
-                onCheckedChange={(checked) =>
-                  updateField("isGoodHabit", checked)
-                }
-              />
-              <span
-                className={cn(
-                  "text-sm",
-                  formData.isGoodHabit && "text-green-600 font-medium",
-                )}
-              >
-                Good
-              </span>
-            </div>
+          {/* Good/Bad Toggle Pills */}
+          <div className="flex items-center gap-2 p-1 rounded-full bg-background/50 backdrop-blur-sm">
+            <button
+              type="button"
+              onClick={() => updateField("isGoodHabit", true)}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200",
+                formData.isGoodHabit
+                  ? "bg-emerald-500 text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <ThumbsUp className="w-3.5 h-3.5" />
+              Build
+            </button>
+            <button
+              type="button"
+              onClick={() => updateField("isGoodHabit", false)}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200",
+                !formData.isGoodHabit
+                  ? "bg-rose-500 text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <ThumbsDown className="w-3.5 h-3.5" />
+              Break
+            </button>
           </div>
         </div>
+      </div>
 
-        <Separator />
-
-        {/* Repeat Configuration */}
-        <div className="space-y-4">
-          <Label>Repeat Interval</Label>
-          <Select
-            value={formData.repeatType}
-            onValueChange={(value) =>
-              updateField("repeatType", value as RepeatType)
-            }
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={RepeatType.DAILY}>Daily</SelectItem>
-              <SelectItem value={RepeatType.WEEKLY}>Weekly</SelectItem>
-              <SelectItem value={RepeatType.MONTHLY}>Monthly</SelectItem>
-              <SelectItem value={RepeatType.CUSTOM}>Custom</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Weekly options */}
-          {formData.repeatType === RepeatType.WEEKLY && (
-            <div className="space-y-2">
-              <Label>Week starts on</Label>
-              <Select
-                value={String(formData.repeatWeekDay ?? 1)}
-                onValueChange={(value) =>
-                  updateField("repeatWeekDay", parseInt(value))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {WEEKDAY_NAMES.map((name, index) => (
-                    <SelectItem key={index} value={String(index)}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Progress is tracked across the entire week. The habit will be
-                visible every day.
-              </p>
+      {/* Main Content */}
+      <ScrollArea className="max-h-[50vh]">
+        <div className="px-6 py-5 space-y-5">
+          {/* Frequency Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Repeat className="w-4 h-4" />
+              Frequency
             </div>
-          )}
-
-          {/* Monthly options */}
-          {formData.repeatType === RepeatType.MONTHLY && (
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">
-                Progress is tracked across the entire calendar month. The habit
-                will be visible every day.
-              </p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: RepeatType.DAILY, label: "Daily" },
+                { value: RepeatType.WEEKLY, label: "Weekly" },
+                { value: RepeatType.MONTHLY, label: "Monthly" },
+                { value: RepeatType.CUSTOM, label: "Custom" },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => updateField("repeatType", option.value)}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                    formData.repeatType === option.value
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
-          )}
 
-          {/* Custom options */}
-          {formData.repeatType === RepeatType.CUSTOM && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Every X days</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={formData.customIntervalDays ?? ""}
-                  onChange={(e) =>
-                    updateField(
-                      "customIntervalDays",
-                      e.target.value ? parseInt(e.target.value) : undefined,
-                    )
-                  }
-                  placeholder="e.g., 3"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Specific days of week</Label>
-                <div className="flex flex-wrap gap-2">
+            {/* Weekly specific options */}
+            {formData.repeatType === RepeatType.WEEKLY && (
+              <div className="pl-0.5 pt-2 space-y-2">
+                <Label className="text-xs text-muted-foreground">
+                  Week starts on
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
                   {WEEKDAY_NAMES.map((name, index) => (
-                    <Badge
+                    <button
                       key={index}
-                      variant={
-                        formData.customDaysOfWeek?.includes(index)
-                          ? "default"
-                          : "outline"
-                      }
-                      className="cursor-pointer"
-                      onClick={() => toggleWeekDay(index)}
+                      type="button"
+                      onClick={() => updateField("repeatWeekDay", index)}
+                      className={cn(
+                        "w-9 h-9 rounded-lg text-xs font-medium transition-colors",
+                        formData.repeatWeekDay === index
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted/50 hover:bg-muted text-muted-foreground",
+                      )}
                     >
-                      {name.slice(0, 3)}
-                    </Badge>
+                      {name.slice(0, 2)}
+                    </button>
                   ))}
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
 
-        <Separator />
-
-        {/* Completion Type */}
-        <div className="space-y-4">
-          <Label>Completion Type</Label>
-          <Select
-            value={formData.completionType}
-            onValueChange={(value) =>
-              updateField("completionType", value as CompletionType)
-            }
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={CompletionType.YES_NO}>
-                Yes / No (simple check)
-              </SelectItem>
-              <SelectItem value={CompletionType.X_OCCURRENCES}>
-                X occurrences (count-based)
-              </SelectItem>
-            </SelectContent>
-          </Select>
-
-          {formData.completionType === CompletionType.X_OCCURRENCES && (
-            <div className="space-y-2">
-              <Label>
-                {formData.isGoodHabit ? "At least (target)" : "At most (limit)"}
-              </Label>
-              <Input
-                type="number"
-                min={1}
-                value={formData.targetOccurrences ?? ""}
-                onChange={(e) =>
-                  updateField(
-                    "targetOccurrences",
-                    e.target.value ? parseInt(e.target.value) : undefined,
-                  )
-                }
-                placeholder="e.g., 8"
-              />
-              <p className="text-xs text-muted-foreground">
-                {formData.isGoodHabit
-                  ? "Complete when you reach this target"
-                  : "Stay at or below this limit"}
-              </p>
-            </div>
-          )}
-        </div>
-
-        <Separator />
-
-        {/* Start Date */}
-        <div className="space-y-2">
-          <Label>Start Date</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !formData.startDate && "text-muted-foreground",
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {formData.startDate
-                  ? new Date(formData.startDate).toLocaleDateString()
-                  : "Pick a date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={
-                  formData.startDate ? new Date(formData.startDate) : undefined
-                }
-                onSelect={(date) =>
-                  updateField("startDate", date ? normalizeDate(date) : "")
-                }
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        {/* End Condition */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label>End Condition</Label>
-            <Switch
-              checked={hasEndCondition}
-              onCheckedChange={setHasEndCondition}
-            />
+            {/* Custom specific options */}
+            {formData.repeatType === RepeatType.CUSTOM && (
+              <div className="pl-0.5 pt-2 space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">
+                    Repeat every
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      className="w-20"
+                      value={formData.customIntervalDays ?? ""}
+                      onChange={(e) =>
+                        updateField(
+                          "customIntervalDays",
+                          e.target.value ? parseInt(e.target.value) : undefined,
+                        )
+                      }
+                    />
+                    <span className="text-sm text-muted-foreground">days</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">
+                    Or specific days
+                  </Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {WEEKDAY_NAMES.map((name, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => toggleWeekDay(index)}
+                        className={cn(
+                          "w-9 h-9 rounded-lg text-xs font-medium transition-colors",
+                          formData.customDaysOfWeek?.includes(index)
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted/50 hover:bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {name.slice(0, 2)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {hasEndCondition && (
-            <div className="space-y-4">
-              <Select
-                value={formData.endConditionType}
-                onValueChange={(value) =>
-                  updateField("endConditionType", value as EndConditionType)
+          {/* Goal Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Target className="w-4 h-4" />
+              Goal
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  updateField("completionType", CompletionType.YES_NO)
                 }
+                className={cn(
+                  "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                  formData.completionType === CompletionType.YES_NO
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select end condition" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={EndConditionType.DATE}>
-                    End on specific date
-                  </SelectItem>
-                  <SelectItem value={EndConditionType.TOTAL_DAYS}>
-                    After X completed days
-                  </SelectItem>
-                  <SelectItem value={EndConditionType.TOTAL_VALUE}>
-                    After reaching total value
-                  </SelectItem>
-                  <SelectItem value={EndConditionType.STREAK}>
-                    After X day streak
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                <Check className="w-4 h-4 inline mr-1.5" />
+                Yes / No
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  updateField("completionType", CompletionType.X_OCCURRENCES)
+                }
+                className={cn(
+                  "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                  formData.completionType === CompletionType.X_OCCURRENCES
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                <Sparkles className="w-4 h-4 inline mr-1.5" />
+                Count
+              </button>
+            </div>
 
-              {formData.endConditionType === EndConditionType.DATE && (
+            {formData.completionType === CompletionType.X_OCCURRENCES && (
+              <div className="pl-0.5 pt-2 space-y-2">
+                <Label className="text-xs text-muted-foreground">
+                  {formData.isGoodHabit
+                    ? "Target (at least)"
+                    : "Limit (at most)"}
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    className="w-20"
+                    value={formData.targetOccurrences ?? ""}
+                    onChange={(e) =>
+                      updateField(
+                        "targetOccurrences",
+                        e.target.value ? parseInt(e.target.value) : undefined,
+                      )
+                    }
+                  />
+                  <span className="text-sm text-muted-foreground">times</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Tags Section */}
+          {tags.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Tag className="w-4 h-4" />
+                Tags
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => toggleTag(tag.id)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-150 border",
+                      formData.tagIds?.includes(tag.id)
+                        ? "border-transparent shadow-sm"
+                        : "bg-transparent hover:bg-muted/50",
+                    )}
+                    style={
+                      formData.tagIds?.includes(tag.id)
+                        ? {
+                            backgroundColor: tag.color || "var(--primary)",
+                            color: "white",
+                          }
+                        : {
+                            borderColor: tag.color || "var(--border)",
+                            color: tag.color || "var(--muted-foreground)",
+                          }
+                    }
+                  >
+                    {tag.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Advanced Options Collapsible */}
+          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
+              >
+                <ChevronDown
+                  className={cn(
+                    "w-4 h-4 transition-transform duration-200",
+                    advancedOpen && "rotate-180",
+                  )}
+                />
+                Advanced options
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4 space-y-5">
+              {/* Start Date */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <CalendarDays className="w-4 h-4" />
+                  Start Date
+                </div>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       className={cn(
                         "w-full justify-start text-left font-normal",
-                        !formData.endConditionValue && "text-muted-foreground",
+                        !formData.startDate && "text-muted-foreground",
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.endConditionValue
-                        ? new Date(
-                            formData.endConditionValue,
-                          ).toLocaleDateString()
-                        : "Pick end date"}
+                      {formData.startDate
+                        ? parseDate(formData.startDate).toLocaleDateString(
+                            "en-US",
+                            {
+                              weekday: "short",
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            },
+                          )
+                        : "Pick a date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
                       selected={
-                        formData.endConditionValue
-                          ? new Date(formData.endConditionValue)
+                        formData.startDate
+                          ? parseDate(formData.startDate)
                           : undefined
                       }
                       onSelect={(date) =>
                         updateField(
-                          "endConditionValue",
-                          date ? normalizeDate(date) : undefined,
+                          "startDate",
+                          date ? normalizeDate(date) : "",
                         )
                       }
                     />
                   </PopoverContent>
                 </Popover>
-              )}
+              </div>
 
-              {formData.endConditionType &&
-                formData.endConditionType !== EndConditionType.DATE && (
-                  <Input
-                    type="number"
-                    min={1}
-                    value={formData.endConditionValue ?? ""}
-                    onChange={(e) =>
-                      updateField("endConditionValue", e.target.value)
-                    }
-                    placeholder={
-                      formData.endConditionType === EndConditionType.TOTAL_DAYS
-                        ? "Number of days"
-                        : formData.endConditionType ===
-                            EndConditionType.TOTAL_VALUE
-                          ? "Total value"
-                          : "Streak days"
-                    }
-                  />
+              {/* End Condition */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-foreground">
+                    End condition
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setHasEndCondition(!hasEndCondition)}
+                    className={cn(
+                      "w-10 h-6 rounded-full transition-colors duration-200 relative",
+                      hasEndCondition ? "bg-primary" : "bg-muted",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all duration-200",
+                        hasEndCondition ? "left-5" : "left-1",
+                      )}
+                    />
+                  </button>
+                </div>
+
+                {hasEndCondition && (
+                  <div className="space-y-3 pl-0.5">
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { value: EndConditionType.DATE, label: "Date" },
+                        { value: EndConditionType.TOTAL_DAYS, label: "Days" },
+                        { value: EndConditionType.STREAK, label: "Streak" },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() =>
+                            updateField("endConditionType", option.value)
+                          }
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                            formData.endConditionType === option.value
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted/50 text-muted-foreground hover:bg-muted",
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {formData.endConditionType === EndConditionType.DATE && (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !formData.endConditionValue &&
+                                "text-muted-foreground",
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {formData.endConditionValue
+                              ? parseDate(
+                                  formData.endConditionValue as string,
+                                ).toLocaleDateString()
+                              : "Pick end date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={
+                              formData.endConditionValue
+                                ? parseDate(formData.endConditionValue as string)
+                                : undefined
+                            }
+                            onSelect={(date) =>
+                              updateField(
+                                "endConditionValue",
+                                date ? normalizeDate(date) : undefined,
+                              )
+                            }
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    )}
+
+                    {formData.endConditionType &&
+                      formData.endConditionType !== EndConditionType.DATE && (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={1}
+                            className="w-24"
+                            value={formData.endConditionValue ?? ""}
+                            onChange={(e) =>
+                              updateField("endConditionValue", e.target.value)
+                            }
+                            placeholder="0"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            {formData.endConditionType ===
+                            EndConditionType.TOTAL_DAYS
+                              ? "completed days"
+                              : "day streak"}
+                          </span>
+                        </div>
+                      )}
+                  </div>
                 )}
-            </div>
-          )}
+              </div>
+
+              {/* Create New Tag */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-foreground">
+                  Create new tag
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    placeholder="Tag name"
+                    className="flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleCreateTag();
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleCreateTag}
+                    disabled={!newTagName.trim()}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
+      </ScrollArea>
 
-        <Separator />
-
-        {/* Tags */}
-        <div className="space-y-4">
-          <Label>Tags</Label>
-          <div className="flex flex-wrap gap-2">
-            {tags.map((tag) => (
-              <Badge
-                key={tag.id}
-                variant={
-                  formData.tagIds?.includes(tag.id) ? "default" : "outline"
-                }
-                className="cursor-pointer"
-                onClick={() => toggleTag(tag.id)}
-                style={
-                  tag.color && formData.tagIds?.includes(tag.id)
-                    ? { backgroundColor: tag.color }
-                    : tag.color
-                      ? { borderColor: tag.color, color: tag.color }
-                      : {}
-                }
-              >
-                {tag.name}
-              </Badge>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Input
-              value={newTagName}
-              onChange={(e) => setNewTagName(e.target.value)}
-              placeholder="New tag name"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleCreateTag();
-                }
-              }}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={handleCreateTag}
-              disabled={!newTagName.trim()}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        <DialogFooter className="pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" disabled={!formData.name.trim()}>
-            {editingHabit ? "Save Changes" : "Create Habit"}
-          </Button>
-        </DialogFooter>
-      </form>
-    </ScrollArea>
+      {/* Footer */}
+      <div className="px-6 py-4 border-t border-border bg-muted/30 flex items-center justify-end gap-3">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => onOpenChange(false)}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" disabled={!formData.name.trim()} className="px-6">
+          {editingHabit ? "Save" : "Create"}
+        </Button>
+      </div>
+    </form>
   );
 }

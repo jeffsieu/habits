@@ -12,7 +12,15 @@ interface AppLayoutProps {
 }
 
 function AppLayoutInner({ children }: AppLayoutProps) {
-  const { habits, isLoaded } = useHabitsContext();
+  const { habits, tags, progressEvents, isLoaded, addTag, updateTag } = useHabitsContext();
+
+  const handleAddTag = (name: string, color?: string) => {
+    return addTag({ name, color });
+  };
+
+  const handleUpdateTag = (id: string, input: Partial<{ name: string; color?: string }>) => {
+    updateTag(id, input);
+  };
 
   if (!isLoaded) {
     return (
@@ -32,14 +40,26 @@ function AppLayoutInner({ children }: AppLayoutProps) {
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar - Desktop only */}
-      <AppSidebar habits={habits} />
+      <AppSidebar 
+        habits={habits} 
+        tags={tags}
+        progressEvents={progressEvents} 
+        onAddTag={handleAddTag}
+        onUpdateTag={handleUpdateTag}
+      />
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
         <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
           <div className="flex items-center gap-2 lg:hidden">
-            <MobileSidebarTrigger habits={habits} />
+            <MobileSidebarTrigger 
+              habits={habits} 
+              tags={tags}
+              progressEvents={progressEvents} 
+              onAddTag={handleAddTag}
+              onUpdateTag={handleUpdateTag}
+            />
           </div>
           <div className="flex-1" />
           <ThemeToggle />

@@ -245,6 +245,18 @@ button, a, input, [role="button"] {
 .stagger-5 { animation-delay: 0.25s; }
 .stagger-6 { animation-delay: 0.3s; }
 
+/* Habit grid striped pattern for unscheduled days */
+.habit-cell-striped {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--muted) 0px,
+    var(--muted) 2px,
+    transparent 2px,
+    transparent 5px
+  );
+  opacity: 0.5;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

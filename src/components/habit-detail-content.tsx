@@ -10,9 +10,14 @@ import {
   calculateBestStreak,
   calculateTotalCompletedDays,
   calculateTotalValue,
+  normalizeDate,
+  isHabitCompleteOnDate,
+  isStreakSecure,
 } from "@/lib/habit-utils";
 import { HabitIconDisplay } from "@/lib/habit-icons";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { 
   Flame, 
   Trophy, 
@@ -24,6 +29,8 @@ import {
   Clock,
   Repeat,
   Check,
+  Plus,
+  Minus,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -39,6 +46,7 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
     progressEvents,
     updateHabit,
     addTag,
+    logProgress,
   } = useHabitsContext();
 
   const habit = habits.find((h) => h.id === habitId);
@@ -64,6 +72,22 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
   const totalCompletedDays = calculateTotalCompletedDays(habit, progressEvents);
   const totalValue = calculateTotalValue(habit, progressEvents);
   const habitTags = tags.filter((t) => habit.tagIds.includes(t.id));
+
+  // Get progress for selected date
+  const selectedDateStr = normalizeDate(selectedDate);
+  const selectedDateProgress = progressEvents.find(
+    (p) => p.habitId === habit.id && p.date === selectedDateStr
+  );
+  const selectedDateValue = selectedDateProgress?.value ?? 0;
+  const isSelectedDateComplete = isHabitCompleteOnDate(habit, progressEvents, selectedDateStr);
+
+  const handleLogProgressForDate = (value: number) => {
+    logProgress({
+      habitId: habit.id,
+      date: selectedDateStr,
+      value: Math.max(0, value),
+    });
+  };
 
   const handleFormSubmit = (input: CreateHabitInput) => {
     updateHabit({ id: habit.id, ...input });
@@ -171,7 +195,10 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
               </h2>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-warning">
+                  <div className={cn(
+                    "flex items-center gap-2",
+                    isStreakSecure(habit, progressEvents) ? "text-warning" : "text-muted-foreground"
+                  )}>
                     <Flame className="w-5 h-5" />
                     <span className="text-2xl font-display font-semibold">{currentStreak}</span>
                   </div>
@@ -236,7 +263,7 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
           </div>
 
           {/* Calendar */}
-          <div className="lg:col-span-7">
+          <div className="lg:col-span-7 space-y-4">
             <div className="bg-card rounded-xl border border-border p-4">
               <CalendarView
                 habits={[habit]}
@@ -244,6 +271,68 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                 selectedDate={selectedDate}
                 onDateSelect={setSelectedDate}
               />
+            </div>
+
+            {/* Log Progress for Selected Date */}
+            <div className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-sm">
+                    {formatDate(selectedDateStr, "long")}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {isSelectedDateComplete ? (
+                      <span className="text-success flex items-center gap-1">
+                        <Check className="w-3 h-3" />
+                        Completed
+                      </span>
+                    ) : selectedDateValue > 0 ? (
+                      `${selectedDateValue} / ${habit.targetOccurrences ?? 1}`
+                    ) : (
+                      "Not logged"
+                    )}
+                  </p>
+                </div>
+
+                {habit.completionType === CompletionType.YES_NO ? (
+                  <Button
+                    variant={isSelectedDateComplete ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleLogProgressForDate(isSelectedDateComplete ? 0 : 1)}
+                    className="gap-2"
+                  >
+                    <Check className="w-4 h-4" />
+                    {isSelectedDateComplete ? "Done" : "Mark Complete"}
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleLogProgressForDate(selectedDateValue - 1)}
+                      disabled={selectedDateValue <= 0}
+                    >
+                      <Minus className="w-4 h-4" />
+                    </Button>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={selectedDateValue}
+                      onChange={(e) => handleLogProgressForDate(parseInt(e.target.value) || 0)}
+                      className="w-16 h-8 text-center"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleLogProgressForDate(selectedDateValue + 1)}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

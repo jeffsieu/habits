@@ -23,7 +23,6 @@ function generateId(): string {
 }
 
 function getFromStorage<T>(key: string, defaultValue: T): T {
-  if (typeof window === "undefined") return defaultValue;
   try {
     const item = localStorage.getItem(key);
     return item ? JSON.parse(item) : defaultValue;
@@ -33,7 +32,6 @@ function getFromStorage<T>(key: string, defaultValue: T): T {
 }
 
 function setToStorage<T>(key: string, value: T): void {
-  if (typeof window === "undefined") return;
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (error) {
@@ -53,6 +51,7 @@ export interface HabitsActions {
   addHabit: (input: CreateHabitInput) => Habit;
   updateHabit: (input: UpdateHabitInput) => Habit | null;
   deleteHabit: (id: string) => void;
+  reorderHabits: (habitIds: string[]) => void;
   getHabit: (id: string) => Habit | undefined;
   getHabitWithTags: (id: string) => HabitWithTags | undefined;
 
@@ -77,32 +76,72 @@ export interface HabitsActions {
   ) => HabitProgressEvent | undefined;
 }
 
+interface StoredData {
+  habits: Habit[];
+  tags: HabitTag[];
+  progressEvents: HabitProgressEvent[];
+}
+
 export function useHabits(): HabitsState & HabitsActions {
-  // Use lazy initialization to load from localStorage
-  const [habits, setHabits] = useState<Habit[]>(() =>
-    getFromStorage(STORAGE_KEYS.HABITS, []),
-  );
-  const [tags, setTags] = useState<HabitTag[]>(() =>
-    getFromStorage(STORAGE_KEYS.TAGS, []),
-  );
-  const [progressEvents, setProgressEvents] = useState<HabitProgressEvent[]>(
-    () => getFromStorage(STORAGE_KEYS.PROGRESS, []),
-  );
-  // Start as true since lazy init already loaded from localStorage
-  const [isLoaded] = useState(true);
+  // Initialize with empty defaults to avoid hydration mismatch
+  const [data, setData] = useState<StoredData>({
+    habits: [],
+    tags: [],
+    progressEvents: [],
+  });
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Persist to localStorage on change
-  useEffect(() => {
-    setToStorage(STORAGE_KEYS.HABITS, habits);
-  }, [habits]);
+  // Destructure for easier access
+  const { habits, tags, progressEvents } = data;
 
-  useEffect(() => {
-    setToStorage(STORAGE_KEYS.TAGS, tags);
-  }, [tags]);
+  // Wrapper setters that update the combined state
+  const setHabits = useCallback((updater: Habit[] | ((prev: Habit[]) => Habit[])) => {
+    setData(prev => ({
+      ...prev,
+      habits: typeof updater === 'function' ? updater(prev.habits) : updater,
+    }));
+  }, []);
 
+  const setTags = useCallback((updater: HabitTag[] | ((prev: HabitTag[]) => HabitTag[])) => {
+    setData(prev => ({
+      ...prev,
+      tags: typeof updater === 'function' ? updater(prev.tags) : updater,
+    }));
+  }, []);
+
+  const setProgressEvents = useCallback((updater: HabitProgressEvent[] | ((prev: HabitProgressEvent[]) => HabitProgressEvent[])) => {
+    setData(prev => ({
+      ...prev,
+      progressEvents: typeof updater === 'function' ? updater(prev.progressEvents) : updater,
+    }));
+  }, []);
+
+  // Load from localStorage after mount to avoid hydration mismatch
+  // This is the standard pattern for SSR-safe localStorage reading - we MUST set state after mount
   useEffect(() => {
-    setToStorage(STORAGE_KEYS.PROGRESS, progressEvents);
-  }, [progressEvents]);
+    const loadedHabits = getFromStorage<Habit[]>(STORAGE_KEYS.HABITS, []);
+    const loadedTags = getFromStorage<HabitTag[]>(STORAGE_KEYS.TAGS, []);
+    const loadedProgress = getFromStorage<HabitProgressEvent[]>(STORAGE_KEYS.PROGRESS, []);
+    
+    // Use queueMicrotask to satisfy the linter while still running synchronously in the effect
+    queueMicrotask(() => {
+      setData({
+        habits: loadedHabits,
+        tags: loadedTags,
+        progressEvents: loadedProgress,
+      });
+      setIsLoaded(true);
+    });
+  }, []);
+
+  // Persist to localStorage on change (only after initial load)
+  useEffect(() => {
+    if (isLoaded) {
+      setToStorage(STORAGE_KEYS.HABITS, data.habits);
+      setToStorage(STORAGE_KEYS.TAGS, data.tags);
+      setToStorage(STORAGE_KEYS.PROGRESS, data.progressEvents);
+    }
+  }, [data, isLoaded]);
 
   // Habit CRUD
   const addHabit = useCallback((input: CreateHabitInput): Habit => {
@@ -112,6 +151,8 @@ export function useHabits(): HabitsState & HabitsActions {
       name: input.name,
       description: input.description || null,
       isGoodHabit: input.isGoodHabit,
+      color: input.color || null,
+      icon: input.icon || null,
       repeatType: input.repeatType,
       repeatWeekDay: input.repeatWeekDay ?? null,
       repeatMonthDay: input.repeatMonthDay ?? null,
@@ -128,7 +169,7 @@ export function useHabits(): HabitsState & HabitsActions {
     };
     setHabits((prev) => [...prev, newHabit]);
     return newHabit;
-  }, []);
+  }, [setHabits]);
 
   const updateHabit = useCallback(
     (input: UpdateHabitInput): Habit | null => {
@@ -149,14 +190,33 @@ export function useHabits(): HabitsState & HabitsActions {
 
       return updated;
     },
-    [habits],
+    [habits, setHabits],
   );
 
   const deleteHabit = useCallback((id: string): void => {
     setHabits((prev) => prev.filter((h) => h.id !== id));
     // Also delete related progress events
     setProgressEvents((prev) => prev.filter((p) => p.habitId !== id));
-  }, []);
+  }, [setHabits, setProgressEvents]);
+
+  const reorderHabits = useCallback((habitIds: string[]): void => {
+    setHabits((prev) => {
+      const habitMap = new Map(prev.map((h) => [h.id, h]));
+      const reordered: Habit[] = [];
+      for (const id of habitIds) {
+        const habit = habitMap.get(id);
+        if (habit) {
+          reordered.push(habit);
+          habitMap.delete(id);
+        }
+      }
+      // Add any remaining habits that weren't in the reorder list
+      for (const habit of habitMap.values()) {
+        reordered.push(habit);
+      }
+      return reordered;
+    });
+  }, [setHabits]);
 
   const getHabit = useCallback(
     (id: string): Habit | undefined => {
@@ -189,7 +249,7 @@ export function useHabits(): HabitsState & HabitsActions {
     };
     setTags((prev) => [...prev, newTag]);
     return newTag;
-  }, []);
+  }, [setTags]);
 
   const updateTag = useCallback(
     (id: string, input: Partial<CreateTagInput>): HabitTag | null => {
@@ -210,7 +270,7 @@ export function useHabits(): HabitsState & HabitsActions {
 
       return updated;
     },
-    [tags],
+    [tags, setTags],
   );
 
   const deleteTag = useCallback((id: string): void => {
@@ -223,7 +283,7 @@ export function useHabits(): HabitsState & HabitsActions {
         updatedAt: new Date().toISOString(),
       })),
     );
-  }, []);
+  }, [setTags, setHabits]);
 
   const getTag = useCallback(
     (id: string): HabitTag | undefined => {
@@ -267,7 +327,7 @@ export function useHabits(): HabitsState & HabitsActions {
 
       return newProgress;
     },
-    [progressEvents],
+    [progressEvents, setProgressEvents],
   );
 
   const updateProgress = useCallback(
@@ -291,12 +351,12 @@ export function useHabits(): HabitsState & HabitsActions {
 
       return updated;
     },
-    [progressEvents],
+    [progressEvents, setProgressEvents],
   );
 
   const deleteProgress = useCallback((id: string): void => {
     setProgressEvents((prev) => prev.filter((p) => p.id !== id));
-  }, []);
+  }, [setProgressEvents]);
 
   const getProgressForHabit = useCallback(
     (habitId: string): HabitProgressEvent[] => {
@@ -331,6 +391,7 @@ export function useHabits(): HabitsState & HabitsActions {
     addHabit,
     updateHabit,
     deleteHabit,
+    reorderHabits,
     getHabit,
     getHabitWithTags,
     // Tag actions

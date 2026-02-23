@@ -7,7 +7,7 @@ const HabitsContext = createContext<(HabitsState & HabitsActions) | null>(null);
 
 export function HabitsProvider({ children }: { children: ReactNode }) {
   const habitsState = useHabits();
-  
+
   return (
     <HabitsContext.Provider value={habitsState}>
       {children}

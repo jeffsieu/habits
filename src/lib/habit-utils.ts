@@ -6,18 +6,26 @@ import {
 } from "@/types/habit";
 
 /**
- * Normalize a date to YYYY-MM-DD string format (date only, no time)
+ * Parse a normalized date string to Date object (at midnight local time)
  */
-export function normalizeDate(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  return d.toISOString().split("T")[0];
+export function parseDate(dateStr: string): Date {
+  // Handle ISO format strings like "2026-02-23" or "2026-02-23T00:00:00.000Z"
+  const datePart = dateStr.split("T")[0];
+  const [year, month, day] = datePart.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 /**
- * Parse a normalized date string to Date object (at midnight UTC)
+ * Normalize a date to YYYY-MM-DD string format (date only, no time)
+ * Uses local timezone to match user's perspective
  */
-export function parseDate(dateStr: string): Date {
-  return new Date(dateStr + "T00:00:00.000Z");
+export function normalizeDate(date: Date | string): string {
+  // For strings, parse using parseDate to ensure local time interpretation
+  const d = typeof date === "string" ? parseDate(date) : date;
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 /**
@@ -413,6 +421,38 @@ export function calculateCurrentStreak(
 }
 
 /**
+ * Check if a habit's streak is "secure" (won't be broken by counting today)
+ * Returns true if:
+ * - streak > 0 AND (today is not scheduled OR today is already complete)
+ * Returns false if:
+ * - streak === 0
+ * - streak > 0 but today is scheduled and not yet complete (at risk of breaking)
+ */
+export function isStreakSecure(
+  habit: Habit,
+  progressEvents: HabitProgressEvent[],
+): boolean {
+  const streak = calculateCurrentStreak(habit, progressEvents);
+  
+  if (streak === 0) return false;
+  
+  const today = new Date();
+  const todayStr = normalizeDate(today);
+  
+  // Check if today is scheduled for this habit
+  const isTodayScheduled = isHabitScheduledForDate(habit, today);
+  
+  if (!isTodayScheduled) {
+    // Not scheduled today, streak is secure
+    return true;
+  }
+  
+  // Today is scheduled - check if it's complete
+  const isTodayComplete = isHabitCompleteOnDate(habit, progressEvents, todayStr);
+  return isTodayComplete;
+}
+
+/**
  * Calculate total completed days for a habit
  */
 export function calculateTotalCompletedDays(
@@ -581,7 +621,8 @@ export function formatDate(
   date: Date | string,
   format: "short" | "long" | "iso" = "short",
 ): string {
-  const d = typeof date === "string" ? new Date(date) : date;
+  // Use parseDate for strings to ensure consistent local timezone handling
+  const d = typeof date === "string" ? parseDate(date) : date;
 
   switch (format) {
     case "iso":

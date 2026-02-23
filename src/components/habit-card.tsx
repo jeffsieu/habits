@@ -12,6 +12,7 @@ import {
   getProgressValueOnDate,
   getDisplayProgressValue,
   calculateCurrentStreak,
+  isStreakSecure,
 } from "@/lib/habit-utils";
 import { HabitIconDisplay } from "@/lib/habit-icons";
 import {
@@ -239,7 +240,12 @@ export function HabitCard({
 
               {/* Streak */}
               {streak > 0 && (
-                <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-warning/10 text-warning">
+                <div className={cn(
+                  "flex items-center gap-1 px-2 py-1 rounded-lg",
+                  isStreakSecure(habit, progressEvents)
+                    ? "bg-warning/10 text-warning"
+                    : "bg-muted text-muted-foreground"
+                )}>
                   <Flame className="w-3.5 h-3.5" />
                   <span className="text-xs font-semibold">{streak}</span>
                 </div>
