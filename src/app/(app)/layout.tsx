@@ -4,7 +4,6 @@ import { ReactNode } from "react";
 import { useHabitsContext } from "@/contexts/habits-context";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileSidebarTrigger } from "@/components/app-sidebar";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { useRandomQuote } from "@/hooks/use-random-quote";
 import { Sparkles } from "lucide-react";
 
@@ -66,8 +65,8 @@ function AppLayoutContent({ children }: AppLayoutProps) {
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
-          <div className="flex items-center gap-2 lg:hidden">
+        <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40 lg:hidden">
+          <div className="flex items-center gap-2">
             <MobileSidebarTrigger
               habits={habits}
               tags={tags}
@@ -77,7 +76,6 @@ function AppLayoutContent({ children }: AppLayoutProps) {
             />
           </div>
           <div className="flex-1" />
-          <ThemeToggle />
         </header>
 
         {/* Page content */}

@@ -40,6 +40,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { SidebarAuth } from "@/components/sidebar-auth";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface AppSidebarProps {
   habits: Habit[];
@@ -320,9 +321,14 @@ function SidebarContent({
           </div>
         </nav>
       </ScrollArea>
+      <div className="p-2">
+        <ThemeToggle />
+      </div>
 
       {/* Auth Section */}
-      <SidebarAuth />
+      <div className="border-t border-border p-2 space-y-2">
+        <SidebarAuth />
+      </div>
 
       {/* Create Tag Dialog */}
       <Dialog

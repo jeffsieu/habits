@@ -10,7 +10,7 @@ export function SidebarAuth() {
 
   if (isLoading) {
     return (
-      <div className="px-4 py-3 border-t border-border">
+      <div>
         <div className="h-10 bg-muted animate-pulse rounded-lg" />
       </div>
     );
@@ -18,7 +18,7 @@ export function SidebarAuth() {
 
   if (isAuthenticated && user) {
     return (
-      <div className="px-4 py-3 border-t border-border">
+      <div>
         <div className="flex items-center gap-3 mb-3">
           {user.image ? (
             <img
@@ -55,7 +55,7 @@ export function SidebarAuth() {
   }
 
   return (
-    <div className="px-4 py-3 border-t border-border">
+    <div>
       <Button
         variant="outline"
         size="sm"

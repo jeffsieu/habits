@@ -20,24 +20,45 @@ export function ThemeToggle() {
     setMounted(true);
   }, []);
 
-  if (!mounted) {
-    return (
-      <Button variant="ghost" size="icon" className="h-9 w-9">
-        <Sun className="h-4 w-4" />
-      </Button>
-    );
-  }
+  const getThemeIcon = () => {
+    if (!mounted) return <Monitor className="h-4 w-4" />;
+    switch (theme) {
+      case "light":
+        return <Sun className="h-4 w-4" />;
+      case "dark":
+        return <Moon className="h-4 w-4" />;
+      default:
+        return <Monitor className="h-4 w-4" />;
+    }
+  };
+
+  const getThemeLabel = () => {
+    if (!mounted) return "System";
+    switch (theme) {
+      case "light":
+        return "Light";
+      case "dark":
+        return "Dark";
+      default:
+        return "System";
+    }
+  };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-9 w-9">
-          <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span className="sr-only">Toggle theme</span>
+        <Button
+          variant="outline"
+          className="w-full justify-start gap-3 px-3 py-2 h-auto font-normal text-sm text-muted-foreground hover:text-foreground"
+        >
+          {getThemeIcon()}
+          {getThemeLabel()}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent
+        align="start"
+        className="w-[--radix-dropdown-menu-trigger-width]"
+      >
         <DropdownMenuItem
           onClick={() => setTheme("light")}
           className={cn(theme === "light" && "bg-accent")}
