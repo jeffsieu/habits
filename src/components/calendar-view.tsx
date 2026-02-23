@@ -1,16 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   getCalendarGrid,
   normalizeDate,
   isToday,
   getHabitsForDate,
   isHabitCompleteOnDate,
+  addDays,
 } from "@/lib/habit-utils";
 import { Habit, HabitProgressEvent } from "@/types/habit";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CalendarViewProps {
@@ -51,11 +52,51 @@ export function CalendarView({
     onDateSelect(today);
   };
 
+  // Pre-compute streak info for all dates
+  const streakInfo = useMemo(() => {
+    const info: Record<
+      string,
+      { isComplete: boolean; prevComplete: boolean; nextComplete: boolean }
+    > = {};
+    dates.forEach((date) => {
+      const dateStr = normalizeDate(date);
+      const scheduledHabits = getHabitsForDate(habits, date);
+      const completedCount = scheduledHabits.filter((h) =>
+        isHabitCompleteOnDate(h, progressEvents, dateStr),
+      ).length;
+      const isComplete =
+        scheduledHabits.length > 0 && completedCount === scheduledHabits.length;
+
+      // Check previous day
+      const prevDate = addDays(date, -1);
+      const prevDateStr = normalizeDate(prevDate);
+      const prevScheduled = getHabitsForDate(habits, prevDate);
+      const prevCompleted = prevScheduled.filter((h) =>
+        isHabitCompleteOnDate(h, progressEvents, prevDateStr),
+      ).length;
+      const prevComplete =
+        prevScheduled.length > 0 && prevCompleted === prevScheduled.length;
+
+      // Check next day
+      const nextDate = addDays(date, 1);
+      const nextDateStr = normalizeDate(nextDate);
+      const nextScheduled = getHabitsForDate(habits, nextDate);
+      const nextCompleted = nextScheduled.filter((h) =>
+        isHabitCompleteOnDate(h, progressEvents, nextDateStr),
+      ).length;
+      const nextComplete =
+        nextScheduled.length > 0 && nextCompleted === nextScheduled.length;
+
+      info[dateStr] = { isComplete, prevComplete, nextComplete };
+    });
+    return info;
+  }, [dates, habits, progressEvents]);
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full max-w-lg mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-display text-lg font-semibold tracking-tight text-foreground">
           {monthName}
         </h2>
         <div className="flex items-center gap-1">
@@ -89,11 +130,11 @@ export function CalendarView({
       </div>
 
       {/* Weekday headers */}
-      <div className="grid grid-cols-7 gap-1 mb-1">
-        {["S", "M", "T", "W", "T", "F", "S"].map((day, i) => (
+      <div className="grid grid-cols-7 mb-2">
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, i) => (
           <div
             key={i}
-            className="text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider py-1"
+            className="text-center text-xs font-medium text-muted-foreground py-2"
           >
             {day}
           </div>
@@ -101,17 +142,20 @@ export function CalendarView({
       </div>
 
       {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-1 flex-1">
+      <div className="grid grid-cols-7 gap-y-1">
         {dates.map((date, index) => {
+          const dateStr = normalizeDate(date);
           const isCurrentMonth = date.getMonth() === month;
-          const isSelected =
-            normalizeDate(date) === normalizeDate(selectedDate);
+          const isSelected = dateStr === normalizeDate(selectedDate);
           const isTodayDate = isToday(date);
           const scheduledHabits = getHabitsForDate(habits, date);
           const completedCount = scheduledHabits.filter((h) =>
-            isHabitCompleteOnDate(h, progressEvents, normalizeDate(date)),
+            isHabitCompleteOnDate(h, progressEvents, dateStr),
           ).length;
           const totalCount = scheduledHabits.length;
+
+          const streak = streakInfo[dateStr];
+          const dayOfWeek = date.getDay();
 
           return (
             <DayCell
@@ -122,6 +166,11 @@ export function CalendarView({
               isToday={isTodayDate}
               totalHabits={totalCount}
               completedHabits={completedCount}
+              isStreakStart={streak?.isComplete && !streak?.prevComplete}
+              isStreakEnd={streak?.isComplete && !streak?.nextComplete}
+              isStreakComplete={streak?.isComplete ?? false}
+              isFirstDayOfWeek={dayOfWeek === 0}
+              isLastDayOfWeek={dayOfWeek === 6}
               onClick={() => onDateSelect(date)}
             />
           );
@@ -138,6 +187,11 @@ interface DayCellProps {
   isToday: boolean;
   totalHabits: number;
   completedHabits: number;
+  isStreakStart: boolean;
+  isStreakEnd: boolean;
+  isStreakComplete: boolean;
+  isFirstDayOfWeek: boolean;
+  isLastDayOfWeek: boolean;
   onClick: () => void;
 }
 
@@ -148,97 +202,86 @@ function DayCell({
   isToday,
   totalHabits,
   completedHabits,
+  isStreakStart,
+  isStreakEnd,
+  isStreakComplete,
+  isFirstDayOfWeek,
+  isLastDayOfWeek,
   onClick,
 }: DayCellProps) {
   const hasHabits = totalHabits > 0;
   const completionRatio = hasHabits ? completedHabits / totalHabits : 0;
-  const allComplete = completionRatio === 1;
+
+  // Determine streak connector styling
+  const showStreakBg = isStreakComplete && isCurrentMonth;
+  const streakRoundedLeft = isStreakStart || isFirstDayOfWeek;
+  const streakRoundedRight = isStreakEnd || isLastDayOfWeek;
 
   return (
     <button
       onClick={onClick}
       className={cn(
-        "group relative flex flex-col items-center justify-center rounded-lg transition-all duration-150",
-        "aspect-square",
-        "hover:bg-muted",
+        "group relative flex flex-col items-center justify-center transition-all duration-150",
+        "py-2.5 lg:py-3",
+        "hover:bg-muted/50",
         !isCurrentMonth && "opacity-30",
-        isSelected && "bg-primary shadow-sm",
-        isToday && !isSelected && "ring-1 ring-primary/40 bg-primary/5",
       )}
     >
-      {/* Day number */}
-      <span
-        className={cn(
-          "text-xs font-medium transition-colors",
-          isSelected ? "text-primary-foreground" : "text-foreground",
-          !isCurrentMonth && "text-muted-foreground",
-        )}
-      >
-        {date.getDate()}
-      </span>
-
-      {/* Progress indicator */}
-      {hasHabits && (
+      {/* Streak background connector */}
+      {showStreakBg && (
         <div
           className={cn(
-            "absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-center gap-0.5",
-            "transition-transform duration-200",
-            isSelected && "scale-110",
+            "absolute inset-y-1 inset-x-0 bg-success/15",
+            streakRoundedLeft && "rounded-l-full ml-1",
+            streakRoundedRight && "rounded-r-full mr-1",
+          )}
+        />
+      )}
+
+      {/* Day number with selection/today ring */}
+      <div
+        className={cn(
+          "relative z-10 w-8 h-8 lg:w-9 lg:h-9 flex items-center justify-center rounded-full transition-all",
+          isSelected && "bg-primary shadow-sm",
+          isToday && !isSelected && "ring-2 ring-primary/40",
+        )}
+      >
+        <span
+          className={cn(
+            "text-sm lg:text-base font-medium transition-colors",
+            isSelected ? "text-primary-foreground" : "text-foreground",
+            !isCurrentMonth && "text-muted-foreground",
           )}
         >
-          {/* Progress dots */}
-          {totalHabits <= 4 ? (
-            // Show individual dots for 4 or fewer habits
+          {date.getDate()}
+        </span>
+      </div>
+
+      {/* Progress indicator dots */}
+      {hasHabits && !isStreakComplete && (
+        <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex items-center gap-0.5">
+          {totalHabits <= 3 ? (
             <div className="flex items-center gap-0.5">
               {Array.from({ length: totalHabits }).map((_, i) => (
                 <div
                   key={i}
                   className={cn(
-                    "w-1.5 h-1.5 rounded-full transition-colors",
+                    "w-1 h-1 rounded-full transition-colors",
                     i < completedHabits
-                      ? isSelected
-                        ? "bg-primary-foreground"
-                        : "bg-success"
-                      : isSelected
-                        ? "bg-primary-foreground/30"
-                        : "bg-muted-foreground/20",
+                      ? "bg-success"
+                      : "bg-muted-foreground/20",
                   )}
                 />
               ))}
             </div>
           ) : (
-            // Show progress bar for more habits
-            <div
-              className={cn(
-                "w-6 h-1.5 rounded-full overflow-hidden",
-                isSelected
-                  ? "bg-primary-foreground/30"
-                  : "bg-muted-foreground/20",
-              )}
-            >
+            <div className="w-4 h-1 rounded-full overflow-hidden bg-muted-foreground/20">
               <div
-                className={cn(
-                  "h-full rounded-full transition-all duration-300",
-                  isSelected ? "bg-primary-foreground" : "bg-success",
-                )}
+                className="h-full rounded-full bg-success transition-all duration-300"
                 style={{ width: `${completionRatio * 100}%` }}
               />
             </div>
           )}
-        </div>
-      )}
-
-      {/* All complete celebration indicator */}
-      {allComplete && isCurrentMonth && (
-        <div
-          className={cn(
-            "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center",
-            isSelected
-              ? "bg-primary-foreground text-primary"
-              : "bg-success text-success-foreground",
-          )}
-        >
-          <Check className="w-2 h-2" />
         </div>
       )}
     </button>

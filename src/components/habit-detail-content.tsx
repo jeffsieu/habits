@@ -23,6 +23,7 @@ import { HabitIconDisplay } from "@/lib/habit-icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ProgressRing } from "@/components/ui/progress-ring";
 import {
   Flame,
   Trophy,
@@ -30,12 +31,11 @@ import {
   Target,
   Pencil,
   ArrowLeft,
-  BarChart3,
-  Clock,
   Repeat,
   Check,
   Plus,
   Minus,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -147,218 +147,302 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
     return "Unknown";
   };
 
+  const streakProgress =
+    bestStreak > 0 ? (currentStreak / bestStreak) * 100 : 0;
+
   return (
-    <div className="h-full">
-      {/* Header */}
-      <header className="border-b border-border bg-linear-to-br from-primary/5 via-transparent to-accent/5">
-        <div className="px-4 lg:px-6 py-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-4">
-              {/* Habit icon */}
+    <div className="h-full pb-28 lg:pb-6">
+      {/* Hero Header */}
+      <header className="relative overflow-hidden">
+        {/* Background gradient */}
+        <div
+          className="absolute inset-0 opacity-20"
+          style={{
+            background: habit.color
+              ? `radial-gradient(ellipse at 50% 0%, ${habit.color}40 0%, transparent 70%)`
+              : "radial-gradient(ellipse at 50% 0%, var(--primary) 0%, transparent 70%)",
+          }}
+        />
+
+        <div className="relative px-4 lg:px-6 py-8 lg:py-10">
+          {/* Edit button - floating */}
+          <Button
+            onClick={() => setIsFormOpen(true)}
+            variant="ghost"
+            size="icon"
+            className="absolute top-4 right-4 lg:top-6 lg:right-6 h-9 w-9 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 hover:bg-card"
+          >
+            <Pencil className="w-4 h-4" />
+          </Button>
+
+          {/* Mobile: centered stacked layout */}
+          <div className="flex flex-col items-center text-center lg:hidden">
+            {/* Large habit icon with glow */}
+            <div className="relative mb-6">
               <div
-                className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0"
+                className="absolute inset-0 blur-2xl opacity-40 scale-150"
+                style={{
+                  backgroundColor: habit.color || "var(--primary)",
+                }}
+              />
+              <div
+                className="relative w-20 h-20 rounded-2xl flex items-center justify-center"
                 style={{
                   backgroundColor: habit.color
-                    ? `${habit.color}15`
-                    : "var(--muted)",
-                  color: habit.color || "var(--muted-foreground)",
+                    ? `${habit.color}20`
+                    : "var(--primary)/10",
+                  color: habit.color || "var(--primary)",
                 }}
               >
-                <HabitIconDisplay iconName={habit.icon} className="w-7 h-7" />
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
-                    {habit.name}
-                  </h1>
-                  {!habit.isGoodHabit && (
-                    <span className="px-2 py-0.5 text-xs font-medium uppercase tracking-wide rounded bg-destructive/10 text-destructive">
-                      Limit
-                    </span>
-                  )}
-                </div>
-                {habit.description && (
-                  <p className="text-sm text-muted-foreground">
-                    {habit.description}
-                  </p>
-                )}
-                {habitTags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {habitTags.map((tag) => (
-                      <span
-                        key={tag.id}
-                        className="px-2 py-0.5 text-xs font-medium rounded-full"
-                        style={{
-                          backgroundColor: tag.color
-                            ? `${tag.color}15`
-                            : "var(--muted)",
-                          color: tag.color || "var(--muted-foreground)",
-                        }}
-                      >
-                        {tag.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <HabitIconDisplay iconName={habit.icon} className="w-10 h-10" />
               </div>
             </div>
 
-            <Button
-              onClick={() => setIsFormOpen(true)}
-              variant="outline"
-              size="sm"
-            >
-              <Pencil className="w-4 h-4 mr-2" />
-              Edit
-            </Button>
+            {/* Habit name */}
+            <div>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
+                  {habit.name}
+                </h1>
+                {!habit.isGoodHabit && (
+                  <span className="px-2 py-0.5 text-xs font-medium uppercase tracking-wide rounded bg-destructive/10 text-destructive">
+                    Limit
+                  </span>
+                )}
+              </div>
+              {habit.description && (
+                <p className="text-muted-foreground max-w-md">
+                  {habit.description}
+                </p>
+              )}
+            </div>
+
+            {/* Tags */}
+            {habitTags.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-1.5 mt-4">
+                {habitTags.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className="px-2.5 py-1 text-xs font-medium rounded-full"
+                    style={{
+                      backgroundColor: tag.color
+                        ? `${tag.color}15`
+                        : "var(--muted)",
+                      color: tag.color || "var(--muted-foreground)",
+                    }}
+                  >
+                    {tag.name}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Inline details pills */}
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-muted/50 text-muted-foreground">
+                <Repeat className="w-3 h-3" />
+                {getRepeatDescription()}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-muted/50 text-muted-foreground">
+                <CalendarDays className="w-3 h-3" />
+                Since {formatDate(habit.startDate, "short")}
+              </span>
+            </div>
+          </div>
+
+          {/* Desktop: left-aligned horizontal layout */}
+          <div className="hidden lg:flex items-start gap-6">
+            {/* Habit icon with glow */}
+            <div className="relative shrink-0">
+              <div
+                className="absolute inset-0 blur-2xl opacity-40 scale-150"
+                style={{
+                  backgroundColor: habit.color || "var(--primary)",
+                }}
+              />
+              <div
+                className="relative w-16 h-16 rounded-xl flex items-center justify-center"
+                style={{
+                  backgroundColor: habit.color
+                    ? `${habit.color}20`
+                    : "var(--primary)/10",
+                  color: habit.color || "var(--primary)",
+                }}
+              >
+                <HabitIconDisplay iconName={habit.icon} className="w-8 h-8" />
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
+                  {habit.name}
+                </h1>
+                {!habit.isGoodHabit && (
+                  <span className="px-2 py-0.5 text-xs font-medium uppercase tracking-wide rounded bg-destructive/10 text-destructive">
+                    Limit
+                  </span>
+                )}
+              </div>
+              {habit.description && (
+                <p className="text-sm text-muted-foreground mb-3">
+                  {habit.description}
+                </p>
+              )}
+
+              {/* Tags and details inline */}
+              <div className="flex flex-wrap items-center gap-2">
+                {habitTags.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className="px-2 py-0.5 text-xs font-medium rounded-full"
+                    style={{
+                      backgroundColor: tag.color
+                        ? `${tag.color}15`
+                        : "var(--muted)",
+                      color: tag.color || "var(--muted-foreground)",
+                    }}
+                  >
+                    {tag.name}
+                  </span>
+                ))}
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-muted/50 text-muted-foreground">
+                  <Repeat className="w-3 h-3" />
+                  {getRepeatDescription()}
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-muted/50 text-muted-foreground">
+                  <CalendarDays className="w-3 h-3" />
+                  Since {formatDate(habit.startDate, "short")}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Content */}
+      {/* Main Content - Two column layout on desktop */}
       <div className="px-4 lg:px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Stats */}
-          <div className="lg:col-span-5 space-y-4">
-            {/* Streak stats */}
-            <div className="bg-card rounded-xl border border-border p-4">
-              <h2 className="font-semibold text-sm text-muted-foreground mb-4 flex items-center gap-2">
-                <BarChart3 className="w-4 h-4" />
-                Statistics
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <div
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+          {/* Left Column - Stats */}
+          <div className="lg:col-span-5 space-y-6">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Current Streak with Progress Ring */}
+              <div className="col-span-2 bg-card rounded-2xl border border-border p-5 flex items-center gap-5 transition-all duration-200 hover:shadow-lg hover:shadow-primary/5">
+                <ProgressRing
+                  value={currentStreak}
+                  max={Math.max(bestStreak, 1)}
+                  size={80}
+                  strokeWidth={6}
+                  className={cn(
+                    isStreakSecure(habit, progressEvents)
+                      ? "text-warning"
+                      : "text-primary",
+                  )}
+                >
+                  <Flame
                     className={cn(
-                      "flex items-center gap-2",
-                      isStreakSecure(habit, progressEvents)
-                        ? "text-warning"
-                        : "text-muted-foreground",
+                      "w-5 h-5",
+                      isStreakSecure(habit, progressEvents) && "animate-pulse",
                     )}
-                  >
-                    <Flame className="w-5 h-5" />
-                    <span className="text-2xl font-display font-semibold">
-                      {currentStreak}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Current Streak
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-primary">
-                    <Trophy className="w-5 h-5" />
-                    <span className="text-2xl font-display font-semibold">
-                      {bestStreak}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Best Streak</p>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-success">
-                    <CalendarDays className="w-5 h-5" />
-                    <span className="text-2xl font-display font-semibold">
-                      {totalCompletedDays}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Days Completed
-                  </p>
-                </div>
-                {(habit.recordingType === RecordingType.COUNT ||
-                  habit.recordingType === RecordingType.VALUE) && (
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-accent-foreground">
-                      <Target className="w-5 h-5" />
-                      <span className="text-2xl font-display font-semibold">
-                        {totalValue}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Total Count</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Details */}
-            <div className="bg-card rounded-xl border border-border p-4">
-              <h2 className="font-semibold text-sm text-muted-foreground mb-4 flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                Details
-              </h2>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground flex items-center gap-2">
-                    <Repeat className="w-4 h-4" />
-                    Repeat
-                  </span>
-                  <span className="font-medium">{getRepeatDescription()}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground flex items-center gap-2">
-                    <Check className="w-4 h-4" />
-                    Completion
-                  </span>
-                  <span className="font-medium">
-                    {getCompletionDescription()}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground flex items-center gap-2">
-                    <CalendarDays className="w-4 h-4" />
-                    Started
-                  </span>
-                  <span className="font-medium">
-                    {formatDate(habit.startDate, "short")}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Calendar */}
-          <div className="lg:col-span-7 space-y-4">
-            <div className="bg-card rounded-xl border border-border p-4">
-              <CalendarView
-                habits={[habit]}
-                progressEvents={progressEvents.filter(
-                  (p) => p.habitId === habit.id,
-                )}
-                selectedDate={selectedDate}
-                onDateSelect={setSelectedDate}
-              />
-            </div>
-
-            {/* Log Progress for Selected Date */}
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center justify-between gap-4">
+                  />
+                </ProgressRing>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-sm">
-                    {formatDate(selectedDateStr, "long")}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {isSelectedDateComplete ? (
-                      <span className="text-success flex items-center gap-1">
-                        <Check className="w-3 h-3" />
-                        Completed
+                  <span className="text-4xl font-display font-bold">
+                    {currentStreak}
+                  </span>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    day streak
+                    {bestStreak > 0 && currentStreak > 0 && (
+                      <span className="text-xs ml-1">
+                        ({Math.round(streakProgress)}% of best)
                       </span>
-                    ) : selectedDateValue > 0 ? (
-                      `${selectedDateValue} / ${habit.goalTarget ?? 1}`
-                    ) : (
-                      "Not logged"
                     )}
                   </p>
                 </div>
+              </div>
+
+              {/* Best Streak */}
+              <div className="bg-card rounded-2xl border border-border p-4 transition-all duration-200 hover:shadow-lg hover:shadow-primary/5">
+                <div className="flex items-center gap-2 text-primary mb-2">
+                  <Trophy className="w-4 h-4" />
+                  <span className="text-xs uppercase tracking-wider font-medium">
+                    Best
+                  </span>
+                </div>
+                <span className="text-2xl font-display font-bold">
+                  {bestStreak}
+                </span>
+                <p className="text-xs text-muted-foreground mt-1">day streak</p>
+              </div>
+
+              {/* Days Completed */}
+              <div className="bg-card rounded-2xl border border-border p-4 transition-all duration-200 hover:shadow-lg hover:shadow-primary/5">
+                <div className="flex items-center gap-2 text-success mb-2">
+                  <Sparkles className="w-4 h-4" />
+                  <span className="text-xs uppercase tracking-wider font-medium">
+                    Completed
+                  </span>
+                </div>
+                <span className="text-2xl font-display font-bold">
+                  {totalCompletedDays}
+                </span>
+                <p className="text-xs text-muted-foreground mt-1">days total</p>
+              </div>
+
+              {/* Total Value (for count/value habits) */}
+              {(habit.recordingType === RecordingType.COUNT ||
+                habit.recordingType === RecordingType.VALUE) && (
+                <div className="col-span-2 bg-card rounded-2xl border border-border p-4 transition-all duration-200 hover:shadow-lg hover:shadow-primary/5">
+                  <div className="flex items-center gap-2 text-accent-foreground mb-2">
+                    <Target className="w-4 h-4" />
+                    <span className="text-xs uppercase tracking-wider font-medium">
+                      Total
+                    </span>
+                  </div>
+                  <span className="text-2xl font-display font-bold">
+                    {totalValue}
+                  </span>
+                  <p className="text-xs text-muted-foreground mt-1">logged</p>
+                </div>
+              )}
+            </div>
+
+            {/* Quick-Log Panel - Desktop only, inline */}
+            <div className="hidden lg:block bg-card rounded-2xl border border-border p-5">
+              <h3 className="font-semibold mb-3">
+                {formatDate(selectedDateStr, "long")}
+              </h3>
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm text-muted-foreground">
+                  {isSelectedDateComplete ? (
+                    <span className="text-success flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" />
+                      Completed
+                    </span>
+                  ) : selectedDateValue > 0 ? (
+                    <span className="flex items-center gap-1">
+                      <span className="font-medium">{selectedDateValue}</span>
+                      <span>/ {habit.goalTarget ?? 1}</span>
+                    </span>
+                  ) : (
+                    "Not logged yet"
+                  )}
+                </p>
 
                 {habit.recordingType === RecordingType.YES_NO ? (
                   <Button
                     variant={isSelectedDateComplete ? "default" : "outline"}
-                    size="sm"
+                    size="default"
                     onClick={() =>
                       handleLogProgressForDate(isSelectedDateComplete ? 0 : 1)
                     }
-                    className="gap-2"
+                    className={cn(
+                      "gap-2",
+                      isSelectedDateComplete &&
+                        "bg-success hover:bg-success/90 text-success-foreground",
+                    )}
                   >
                     <Check className="w-4 h-4" />
                     {isSelectedDateComplete ? "Done" : "Mark Complete"}
@@ -368,7 +452,7 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-9 w-9 rounded-full"
                       onClick={() =>
                         handleLogProgressForDate(selectedDateValue - 1)
                       }
@@ -383,12 +467,12 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                       onChange={(e) =>
                         handleLogProgressForDate(parseInt(e.target.value) || 0)
                       }
-                      className="w-16 h-8 text-center"
+                      className="w-16 h-9 text-center font-semibold"
                     />
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-9 w-9 rounded-full"
                       onClick={() =>
                         handleLogProgressForDate(selectedDateValue + 1)
                       }
@@ -399,6 +483,101 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Right Column - Calendar */}
+          <div className="lg:col-span-7">
+            <div>
+              <div className="bg-card rounded-2xl border border-border p-4 lg:p-6">
+                <CalendarView
+                  habits={[habit]}
+                  progressEvents={progressEvents.filter(
+                    (p) => p.habitId === habit.id,
+                  )}
+                  selectedDate={selectedDate}
+                  onDateSelect={setSelectedDate}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating Quick-Log Panel - Mobile only */}
+      <div className="fixed bottom-0 left-0 right-0 lg:hidden z-50">
+        <div className="bg-card/95 backdrop-blur-md border-t border-border p-4 shadow-lg shadow-background/80">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold truncate">
+                {formatDate(selectedDateStr, "long")}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {isSelectedDateComplete ? (
+                  <span className="text-success flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" />
+                    Completed
+                  </span>
+                ) : selectedDateValue > 0 ? (
+                  <span className="flex items-center gap-1">
+                    <span className="font-medium">{selectedDateValue}</span>
+                    <span>/ {habit.goalTarget ?? 1}</span>
+                  </span>
+                ) : (
+                  "Tap to log progress"
+                )}
+              </p>
+            </div>
+
+            {habit.recordingType === RecordingType.YES_NO ? (
+              <Button
+                variant={isSelectedDateComplete ? "default" : "outline"}
+                size="lg"
+                onClick={() =>
+                  handleLogProgressForDate(isSelectedDateComplete ? 0 : 1)
+                }
+                className={cn(
+                  "gap-2 min-w-[140px]",
+                  isSelectedDateComplete &&
+                    "bg-success hover:bg-success/90 text-success-foreground",
+                )}
+              >
+                <Check className="w-5 h-5" />
+                {isSelectedDateComplete ? "Done" : "Mark Complete"}
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 rounded-full"
+                  onClick={() =>
+                    handleLogProgressForDate(selectedDateValue - 1)
+                  }
+                  disabled={selectedDateValue <= 0}
+                >
+                  <Minus className="w-5 h-5" />
+                </Button>
+                <Input
+                  type="number"
+                  min={0}
+                  value={selectedDateValue}
+                  onChange={(e) =>
+                    handleLogProgressForDate(parseInt(e.target.value) || 0)
+                  }
+                  className="w-20 h-10 text-center text-lg font-semibold"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 rounded-full"
+                  onClick={() =>
+                    handleLogProgressForDate(selectedDateValue + 1)
+                  }
+                >
+                  <Plus className="w-5 h-5" />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>
