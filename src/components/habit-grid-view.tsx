@@ -6,22 +6,19 @@ import {
   Habit,
   HabitProgressEvent,
   HabitTag,
-  RepeatType,
   CompletionType,
 } from "@/types/habit";
 import {
   normalizeDate,
   isHabitScheduledForDate,
-  isHabitCompleteOnDate,
   calculateCurrentStreak,
   getProgressValueOnDate,
   addDays,
-  getProgressValueForInterval,
   isStreakSecure,
 } from "@/lib/habit-utils";
 import { HabitIconDisplay } from "@/lib/habit-icons";
 import { cn } from "@/lib/utils";
-import { Plus, Minus, Flame, GripVertical } from "lucide-react";
+import { Plus, Minus, Flame, GripVertical, Check } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -67,14 +64,6 @@ function formatColumnHeader(date: Date): { day: string; date: number } {
   };
 }
 
-function getWeekNumber(date: Date): number {
-  const startOfYear = new Date(date.getFullYear(), 0, 1);
-  const days = Math.floor(
-    (date.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000),
-  );
-  return Math.ceil((days + startOfYear.getDay() + 1) / 7);
-}
-
 interface SortableHabitRowProps {
   habit: Habit;
   dateColumns: Date[];
@@ -84,9 +73,6 @@ interface SortableHabitRowProps {
   onLogProgress: (habitId: string, date: string, value: number) => void;
   getStreakDisplay: (habit: Habit) => string;
   getIsStreakSecure: (habit: Habit) => boolean;
-  getCurrentPeriodInfo: (
-    habit: Habit,
-  ) => { label: string; progress: string } | null;
 }
 
 function SortableHabitRow({
@@ -98,7 +84,6 @@ function SortableHabitRow({
   onLogProgress,
   getStreakDisplay,
   getIsStreakSecure,
-  getCurrentPeriodInfo,
 }: SortableHabitRowProps) {
   const {
     attributes,
@@ -116,7 +101,6 @@ function SortableHabitRow({
 
   const streak = getStreakDisplay(habit);
   const streakSecure = getIsStreakSecure(habit);
-  const periodInfo = getCurrentPeriodInfo(habit);
 
   return (
     <tr
@@ -161,32 +145,39 @@ function SortableHabitRow({
       {dateColumns.map((date, idx) => {
         const dateStr = normalizeDate(date);
         const isScheduled = isHabitScheduledForDate(habit, date);
-        const isComplete = isHabitCompleteOnDate(
-          habit,
-          progressEvents,
-          dateStr,
-        );
         const currentValue = getProgressValueOnDate(
           progressEvents,
           habit.id,
           dateStr,
         );
+        // Any non-zero progress counts as "completed" for visual styling
+        const hasProgress = currentValue > 0;
         const isToday = dateStr === todayStr;
         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
         const isOccurrenceBased =
           habit.completionType === CompletionType.X_OCCURRENCES;
 
         return (
-          <td key={idx} className={cn("p-0.5", isWeekend && "bg-muted/30")}>
+          <td
+            key={idx}
+            className={cn(
+              "p-0.5",
+              isWeekend && "bg-muted/30",
+              isToday && "px-1",
+            )}
+          >
             {isOccurrenceBased ? (
               // Occurrence-based: show count with +/- buttons on hover
               <div
                 className={cn(
-                  "group relative w-full aspect-square rounded-sm transition-all duration-150 flex items-center justify-center",
+                  "group relative w-full rounded-sm transition-all duration-150 flex items-center justify-center",
+                  isToday ? "aspect-2/1" : "aspect-square",
                   !isScheduled
                     ? "habit-cell-striped cursor-not-allowed"
-                    : isComplete
-                      ? "bg-primary"
+                    : hasProgress
+                      ? isToday
+                        ? "bg-primary"
+                        : "bg-muted-foreground/60"
                       : isToday
                         ? "bg-muted/80 border border-primary/30"
                         : "bg-muted/50",
@@ -197,8 +188,10 @@ function SortableHabitRow({
                   <span
                     className={cn(
                       "text-[10px] font-semibold leading-none z-10",
-                      isComplete
-                        ? "text-primary-foreground"
+                      hasProgress
+                        ? isToday
+                          ? "text-primary-foreground"
+                          : "text-background"
                         : "text-foreground",
                     )}
                   >
@@ -222,8 +215,10 @@ function SortableHabitRow({
                       className={cn(
                         "flex-1 flex items-center justify-center rounded-l-sm transition-colors",
                         currentValue > 0
-                          ? isComplete
-                            ? "hover:bg-black/20 text-primary-foreground"
+                          ? hasProgress
+                            ? isToday
+                              ? "hover:bg-black/20 text-primary-foreground"
+                              : "hover:bg-black/20 text-background"
                             : "hover:bg-primary/30 text-foreground"
                           : "text-muted-foreground/50 cursor-not-allowed",
                       )}
@@ -238,8 +233,10 @@ function SortableHabitRow({
                       }
                       className={cn(
                         "flex-1 flex items-center justify-center rounded-r-sm transition-colors",
-                        isComplete
-                          ? "hover:bg-black/20 text-primary-foreground"
+                        hasProgress
+                          ? isToday
+                            ? "hover:bg-black/20 text-primary-foreground"
+                            : "hover:bg-black/20 text-background"
                           : "hover:bg-primary/30 text-foreground",
                       )}
                       title="Increase count"
@@ -250,15 +247,18 @@ function SortableHabitRow({
                 )}
               </div>
             ) : (
-              // Yes/No: show toggle button
+              // Yes/No: show toggle button with checkmark when complete
               <button
                 onClick={() => isScheduled && onCellClick(habit, date)}
                 disabled={!isScheduled}
                 className={cn(
-                  "w-full aspect-square rounded-sm transition-all duration-150",
+                  "w-full rounded-sm transition-all duration-150 flex items-center justify-center",
+                  isToday ? "aspect-2/1" : "aspect-square",
                   isScheduled
-                    ? isComplete
-                      ? "bg-primary hover:bg-primary/90"
+                    ? hasProgress
+                      ? isToday
+                        ? "bg-primary hover:bg-primary/90"
+                        : "bg-muted-foreground/60 hover:bg-muted-foreground/70"
                       : isToday
                         ? "bg-muted/80 hover:bg-primary/30 border border-primary/30"
                         : "bg-muted/50 hover:bg-muted"
@@ -266,32 +266,26 @@ function SortableHabitRow({
                 )}
                 title={
                   isScheduled
-                    ? isComplete
+                    ? hasProgress
                       ? "Completed - click to undo"
                       : "Click to complete"
                     : "Not scheduled"
                 }
-              />
+              >
+                {isScheduled && hasProgress && (
+                  <Check
+                    className={cn(
+                      "w-3 h-3",
+                      isToday ? "text-primary-foreground" : "text-background",
+                    )}
+                    strokeWidth={3}
+                  />
+                )}
+              </button>
             )}
           </td>
         );
       })}
-
-      {/* Current period cell */}
-      <td className="px-1 py-1 bg-primary/5 border-l border-border">
-        {periodInfo ? (
-          <div className="flex flex-col items-center text-center">
-            <span className="text-[10px] font-semibold text-primary">
-              {periodInfo.label}
-            </span>
-            <span className="text-[9px] text-muted-foreground">
-              {periodInfo.progress}
-            </span>
-          </div>
-        ) : (
-          <div className="w-full h-6" />
-        )}
-      </td>
 
       {/* Streak cell */}
       <td className="px-3 py-2 text-right">
@@ -319,6 +313,18 @@ export function HabitGridView({
   const today = useMemo(() => new Date(), []);
   const todayStr = normalizeDate(today);
   const dateColumns = useMemo(() => getDateColumns(today), [today]);
+
+  // Sort habits: incomplete first, completed at bottom
+  const sortedHabits = useMemo(() => {
+    return [...habits].sort((a, b) => {
+      const aProgress = getProgressValueOnDate(progressEvents, a.id, todayStr);
+      const bProgress = getProgressValueOnDate(progressEvents, b.id, todayStr);
+      const aCompleted = aProgress > 0;
+      const bCompleted = bProgress > 0;
+      if (aCompleted === bCompleted) return 0;
+      return aCompleted ? 1 : -1;
+    });
+  }, [habits, progressEvents, todayStr]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -366,27 +372,6 @@ export function HabitGridView({
     return isStreakSecure(habit, progressEvents);
   };
 
-  const getCurrentPeriodInfo = (habit: Habit) => {
-    if (habit.repeatType === RepeatType.WEEKLY) {
-      const weekNum = getWeekNumber(today);
-      const value = getProgressValueForInterval(habit, progressEvents, today);
-      const target = habit.targetOccurrences ?? 1;
-      return {
-        label: `W${weekNum}`,
-        progress: `${value} / ${target}`,
-      };
-    } else if (habit.repeatType === RepeatType.MONTHLY) {
-      const value = getProgressValueForInterval(habit, progressEvents, today);
-      const target = habit.targetOccurrences ?? 1;
-      const monthName = today.toLocaleString("default", { month: "short" });
-      return {
-        label: monthName,
-        progress: `${value} / ${target}`,
-      };
-    }
-    return null;
-  };
-
   return (
     <div className="w-full overflow-x-auto">
       <DndContext
@@ -415,7 +400,8 @@ export function HabitGridView({
                   <th
                     key={idx}
                     className={cn(
-                      "px-1 py-2 text-center min-w-11 w-11",
+                      "px-1 py-2 text-center",
+                      isToday ? "min-w-20 w-20" : "min-w-11 w-11",
                       isWeekend && "bg-muted/30",
                     )}
                   >
@@ -441,13 +427,6 @@ export function HabitGridView({
                 );
               })}
 
-              {/* Current period column */}
-              <th className="px-2 py-2 text-center min-w-15 bg-primary/5 border-l border-border">
-                <span className="text-[10px] font-medium text-primary">
-                  Period
-                </span>
-              </th>
-
               {/* Streak column */}
               <th className="px-3 py-2 text-right min-w-12">
                 <Flame className="w-3.5 h-3.5 text-muted-foreground inline" />
@@ -456,11 +435,11 @@ export function HabitGridView({
           </thead>
 
           <SortableContext
-            items={habits.map((h) => h.id)}
+            items={sortedHabits.map((h) => h.id)}
             strategy={verticalListSortingStrategy}
           >
             <tbody>
-              {habits.map((habit) => (
+              {sortedHabits.map((habit) => (
                 <SortableHabitRow
                   key={habit.id}
                   habit={habit}
@@ -471,13 +450,12 @@ export function HabitGridView({
                   onLogProgress={onLogProgress}
                   getStreakDisplay={getStreakDisplay}
                   getIsStreakSecure={getIsStreakSecure}
-                  getCurrentPeriodInfo={getCurrentPeriodInfo}
                 />
               ))}
 
               {/* Add habit row */}
               <tr>
-                <td colSpan={dateColumns.length + 3} className="py-2">
+                <td colSpan={dateColumns.length + 2} className="py-2">
                   <button
                     onClick={onAddHabit}
                     className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"

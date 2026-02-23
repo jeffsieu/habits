@@ -62,6 +62,7 @@ function getDayGroups(
   habits: Habit[],
   today: Date,
   daysToShow: number,
+  progressEvents: HabitProgressEvent[],
 ): DayGroup[] {
   const groups: DayGroup[] = [];
 
@@ -74,11 +75,21 @@ function getDayGroups(
     );
 
     if (scheduledHabits.length > 0) {
+      // Sort habits: incomplete first, completed at bottom
+      const sortedHabits = [...scheduledHabits].sort((a, b) => {
+        const aProgress = getProgressValueOnDate(progressEvents, a.id, dateStr);
+        const bProgress = getProgressValueOnDate(progressEvents, b.id, dateStr);
+        const aCompleted = aProgress > 0;
+        const bCompleted = bProgress > 0;
+        if (aCompleted === bCompleted) return 0;
+        return aCompleted ? 1 : -1;
+      });
+
       groups.push({
         date,
         dateStr,
         label: formatDayLabel(date, today),
-        habits: scheduledHabits,
+        habits: sortedHabits,
       });
     }
   }
@@ -236,14 +247,14 @@ export function HabitListView({
 
   // Get all day groups up to daysToShow
   const allDayGroups = useMemo(
-    () => getDayGroups(habits, today, daysToShow),
-    [habits, today, daysToShow],
+    () => getDayGroups(habits, today, daysToShow, progressEvents),
+    [habits, today, daysToShow, progressEvents],
   );
 
   // Split into initial (today + yesterday) and older groups
   const initialGroups = useMemo(() => {
-    return getDayGroups(habits, today, INITIAL_DAYS);
-  }, [habits, today]);
+    return getDayGroups(habits, today, INITIAL_DAYS, progressEvents);
+  }, [habits, today, progressEvents]);
 
   const olderGroups = useMemo(() => {
     if (!showOlder) return [];

@@ -46,6 +46,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   Check,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -219,7 +220,7 @@ function HabitFormContent({
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg"
+                className="relative w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-lg"
                 style={{
                   backgroundColor: currentColor,
                   color: "white",
@@ -229,6 +230,10 @@ function HabitFormContent({
                   iconName={formData.icon}
                   className="w-10 h-10"
                 />
+                {/* Edit indicator */}
+                <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-background border-2 border-border flex items-center justify-center shadow-sm">
+                  <Pencil className="w-3 h-3 text-muted-foreground" />
+                </div>
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-72 p-4" align="center">

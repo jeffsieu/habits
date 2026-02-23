@@ -33,7 +33,12 @@ import {
   Pencil,
   Tag,
 } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { SidebarAuth } from "@/components/sidebar-auth";
 
 interface AppSidebarProps {
@@ -462,6 +467,7 @@ export function MobileSidebarTrigger({
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-64 p-0">
+        <SheetTitle className="sr-only">Navigation menu</SheetTitle>
         <SidebarContent
           habits={habits}
           tags={tags}
