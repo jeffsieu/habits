@@ -12,7 +12,7 @@ interface AppLayoutProps {
   children: ReactNode;
 }
 
-function AppLayoutInner({ children }: AppLayoutProps) {
+function AppLayoutContent({ children }: AppLayoutProps) {
   const { habits, tags, progressEvents, isLoaded, addTag, updateTag } =
     useHabitsContext();
   const quote = useRandomQuote();
@@ -31,7 +31,7 @@ function AppLayoutInner({ children }: AppLayoutProps) {
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-6">
-        <div className="flex flex-col items-center gap-6 animate-fade-in max-w-md text-center">
+        <div className="flex flex-col items-center gap-6 max-w-md text-center">
           <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
             <Sparkles className="w-6 h-6 text-primary animate-pulse" />
           </div>
@@ -87,8 +87,10 @@ function AppLayoutInner({ children }: AppLayoutProps) {
   );
 }
 
-export function AppLayout({ children }: AppLayoutProps) {
-  return (
-    <AppLayoutInner>{children}</AppLayoutInner>
-  );
+export default function AppGroupLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <AppLayoutContent>{children}</AppLayoutContent>;
 }
