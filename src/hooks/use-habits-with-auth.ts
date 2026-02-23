@@ -109,21 +109,39 @@ interface StoredData {
   progressEvents: HabitProgressEvent[];
 }
 
-export function useHabitsWithAuth(): HabitsState & HabitsActions {
+export interface InitialData {
+  habits: Habit[];
+  tags: HabitTag[];
+  progressEvents: HabitProgressEvent[];
+  isAuthenticated: boolean;
+}
+
+export function useHabitsWithAuth(
+  initialData?: InitialData,
+): HabitsState & HabitsActions {
   const { status } = useSession();
   const isAuthenticated = status === "authenticated";
   const isAuthLoading = status === "loading";
 
+  // Use initialData if provided and authenticated via SSR
+  const hasValidInitialData = Boolean(
+    initialData?.isAuthenticated && initialData.habits !== undefined,
+  );
+
   const [data, setData] = useState<StoredData>({
-    habits: [],
-    tags: [],
-    progressEvents: [],
+    habits: hasValidInitialData && initialData ? initialData.habits : [],
+    tags: hasValidInitialData && initialData ? initialData.tags : [],
+    progressEvents:
+      hasValidInitialData && initialData ? initialData.progressEvents : [],
   });
-  const [isLoaded, setIsLoaded] = useState(false);
+  // If we have valid initial data from SSR, we're already loaded
+  const [isLoaded, setIsLoaded] = useState(hasValidInitialData);
   const [pendingLocalData, setPendingLocalData] =
     useState<PendingLocalData | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
-  const lastAuthState = useRef<boolean | null>(null);
+  const lastAuthState = useRef<boolean | null>(
+    hasValidInitialData ? true : null,
+  );
 
   const { habits, tags, progressEvents } = data;
 

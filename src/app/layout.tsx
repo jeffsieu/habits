@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { getServerHabitsData } from "@/lib/server-data";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -43,21 +44,21 @@ export const metadata: Metadata = {
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [
-      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
-    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const initialHabitsData = await getServerHabitsData();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased font-sans">
-        <Providers>
+        <Providers initialHabitsData={initialHabitsData}>
           {/* Grain texture overlay for warmth */}
           <div className="grain-overlay" aria-hidden="true" />
           {children}
