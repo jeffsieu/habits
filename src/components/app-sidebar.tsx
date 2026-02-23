@@ -102,11 +102,6 @@ function SidebarContent({
 
   const getStreakDisplay = (habit: Habit) => {
     const streak = calculateCurrentStreak(habit, progressEvents);
-    if (habit.repeatType === RepeatType.WEEKLY) {
-      return `${streak}w`;
-    } else if (habit.repeatType === RepeatType.MONTHLY) {
-      return `${streak}m`;
-    }
     return streak.toString();
   };
 

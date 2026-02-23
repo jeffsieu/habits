@@ -308,6 +308,18 @@ export function getProgressValueOnDate(
 }
 
 /**
+ * Check if a habit has any progress (value > 0) on a specific date
+ * Used for streak calculation for weekly/monthly habits where any entry counts
+ */
+export function hasProgressOnDate(
+  progressEvents: HabitProgressEvent[],
+  habitId: string,
+  date: string,
+): boolean {
+  return getProgressValueOnDate(progressEvents, habitId, date) > 0;
+}
+
+/**
  * Get display progress for a habit - uses interval aggregation for weekly/monthly habits
  */
 export function getDisplayProgressValue(
@@ -320,9 +332,10 @@ export function getDisplayProgressValue(
 
 /**
  * Calculate current streak for a habit
- * For daily/custom habits: consecutive scheduled days of completion
- * For weekly habits: consecutive weeks of completion
- * For monthly habits: consecutive months of completion
+ * Streaks are always measured in days
+ * For weekly/monthly habits: any day with progress counts toward the streak
+ * For daily/custom habits: the habit must be complete on that day
+ * A streak continues until a scheduled day is missed
  */
 export function calculateCurrentStreak(
   habit: Habit,
@@ -332,89 +345,43 @@ export function calculateCurrentStreak(
   const startDate = parseDate(habit.startDate.split("T")[0]);
   let streak = 0;
 
-  if (habit.repeatType === RepeatType.WEEKLY) {
-    // Count consecutive weeks
-    const weekStartDay = habit.repeatWeekDay ?? 1;
-    let currentWeekStart = getWeekStart(today, weekStartDay);
+  // For weekly/monthly habits, use hasProgressOnDate (any entry counts)
+  // For daily/custom habits, use isHabitCompleteOnDate (must be complete)
+  const isIntervalBasedHabit =
+    habit.repeatType === RepeatType.WEEKLY ||
+    habit.repeatType === RepeatType.MONTHLY;
 
-    while (true) {
-      if (currentWeekStart < startDate) break;
+  let currentDate = parseDate(today);
 
-      // Use the middle of the week for the interval check
-      const midWeek = addDays(currentWeekStart, 3);
+  while (true) {
+    const dateStr = normalizeDate(currentDate);
 
-      if (
-        isHabitCompleteOnDate(habit, progressEvents, normalizeDate(midWeek))
-      ) {
+    if (currentDate < startDate) break;
+
+    if (isHabitScheduledForDate(habit, currentDate)) {
+      // For interval-based habits, any progress counts as maintaining the streak
+      // For daily/custom habits, the habit must be complete
+      const hasProgress = isIntervalBasedHabit
+        ? hasProgressOnDate(progressEvents, habit.id, dateStr)
+        : isHabitCompleteOnDate(habit, progressEvents, dateStr);
+
+      if (hasProgress) {
         streak++;
-        currentWeekStart = addDays(currentWeekStart, -7);
-      } else {
-        // Allow current week to be incomplete
-        if (isSameDay(getWeekStart(today, weekStartDay), currentWeekStart)) {
-          currentWeekStart = addDays(currentWeekStart, -7);
-          continue;
-        }
-        break;
-      }
-
-      if (streak > 200) break; // Safety limit
-    }
-  } else if (habit.repeatType === RepeatType.MONTHLY) {
-    // Count consecutive months
-    let currentDate = parseDate(today);
-
-    while (true) {
-      const monthStart = getMonthStart(currentDate);
-      if (monthStart < startDate) break;
-
-      // Use the middle of the month for the interval check
-      const midMonth = addDays(monthStart, 14);
-
-      if (
-        isHabitCompleteOnDate(habit, progressEvents, normalizeDate(midMonth))
-      ) {
-        streak++;
-        // Go to previous month
-        currentDate = addDays(monthStart, -1);
-      } else {
-        // Allow current month to be incomplete
-        if (getMonthStart(today).getTime() === monthStart.getTime()) {
-          currentDate = addDays(monthStart, -1);
-          continue;
-        }
-        break;
-      }
-
-      if (streak > 60) break; // Safety limit (5 years)
-    }
-  } else {
-    // Daily/Custom: count consecutive scheduled days
-    let currentDate = parseDate(today);
-
-    while (true) {
-      const dateStr = normalizeDate(currentDate);
-
-      if (currentDate < startDate) break;
-
-      if (isHabitScheduledForDate(habit, currentDate)) {
-        if (isHabitCompleteOnDate(habit, progressEvents, dateStr)) {
-          streak++;
-          currentDate = addDays(currentDate, -1);
-        } else {
-          // Allow current day to be incomplete without breaking streak
-          if (dateStr === today) {
-            currentDate = addDays(currentDate, -1);
-            continue;
-          }
-          break;
-        }
-      } else {
-        // Skip non-scheduled days
         currentDate = addDays(currentDate, -1);
+      } else {
+        // Allow current day to be incomplete without breaking streak
+        if (dateStr === today) {
+          currentDate = addDays(currentDate, -1);
+          continue;
+        }
+        break;
       }
-
-      if (streak > 1000) break;
+    } else {
+      // Skip non-scheduled days
+      currentDate = addDays(currentDate, -1);
     }
+
+    if (streak > 1000) break; // Safety limit
   }
 
   return streak;
@@ -423,33 +390,42 @@ export function calculateCurrentStreak(
 /**
  * Check if a habit's streak is "secure" (won't be broken by counting today)
  * Returns true if:
- * - streak > 0 AND (today is not scheduled OR today is already complete)
+ * - streak > 0 AND (today is not scheduled OR today has progress)
  * Returns false if:
  * - streak === 0
- * - streak > 0 but today is scheduled and not yet complete (at risk of breaking)
+ * - streak > 0 but today is scheduled and has no progress (at risk of breaking)
  */
 export function isStreakSecure(
   habit: Habit,
   progressEvents: HabitProgressEvent[],
 ): boolean {
   const streak = calculateCurrentStreak(habit, progressEvents);
-  
+
   if (streak === 0) return false;
-  
+
   const today = new Date();
   const todayStr = normalizeDate(today);
-  
+
   // Check if today is scheduled for this habit
   const isTodayScheduled = isHabitScheduledForDate(habit, today);
-  
+
   if (!isTodayScheduled) {
     // Not scheduled today, streak is secure
     return true;
   }
-  
-  // Today is scheduled - check if it's complete
-  const isTodayComplete = isHabitCompleteOnDate(habit, progressEvents, todayStr);
-  return isTodayComplete;
+
+  // Today is scheduled - check if there's progress
+  // For weekly/monthly habits, any progress secures the streak
+  // For daily/custom habits, it must be complete
+  const isIntervalBasedHabit =
+    habit.repeatType === RepeatType.WEEKLY ||
+    habit.repeatType === RepeatType.MONTHLY;
+
+  if (isIntervalBasedHabit) {
+    return hasProgressOnDate(progressEvents, habit.id, todayStr);
+  }
+
+  return isHabitCompleteOnDate(habit, progressEvents, todayStr);
 }
 
 /**
@@ -467,6 +443,8 @@ export function calculateTotalCompletedDays(
 
 /**
  * Calculate best/longest streak for a habit
+ * For weekly/monthly habits: any day with progress counts toward the streak
+ * For daily/custom habits: the habit must be complete on that day
  */
 export function calculateBestStreak(
   habit: Habit,
@@ -477,50 +455,29 @@ export function calculateBestStreak(
   let bestStreak = 0;
   let currentStreak = 0;
 
-  if (habit.repeatType === RepeatType.WEEKLY) {
-    const weekStartDay = habit.repeatWeekDay ?? 1;
-    let currentWeekStart = getWeekStart(startDate, weekStartDay);
-    const todayWeekStart = getWeekStart(today, weekStartDay);
+  // For weekly/monthly habits, use hasProgressOnDate (any entry counts)
+  // For daily/custom habits, use isHabitCompleteOnDate (must be complete)
+  const isIntervalBasedHabit =
+    habit.repeatType === RepeatType.WEEKLY ||
+    habit.repeatType === RepeatType.MONTHLY;
 
-    while (currentWeekStart <= todayWeekStart) {
-      const midWeek = addDays(currentWeekStart, 3);
-      if (isHabitCompleteOnDate(habit, progressEvents, normalizeDate(midWeek))) {
+  let currentDate = new Date(startDate);
+
+  while (currentDate <= today) {
+    if (isHabitScheduledForDate(habit, currentDate)) {
+      const dateStr = normalizeDate(currentDate);
+      const hasProgress = isIntervalBasedHabit
+        ? hasProgressOnDate(progressEvents, habit.id, dateStr)
+        : isHabitCompleteOnDate(habit, progressEvents, dateStr);
+
+      if (hasProgress) {
         currentStreak++;
         bestStreak = Math.max(bestStreak, currentStreak);
       } else {
         currentStreak = 0;
       }
-      currentWeekStart = addDays(currentWeekStart, 7);
     }
-  } else if (habit.repeatType === RepeatType.MONTHLY) {
-    let currentDate = new Date(startDate);
-    
-    while (currentDate <= today) {
-      const midMonth = addDays(getMonthStart(currentDate), 14);
-      if (isHabitCompleteOnDate(habit, progressEvents, normalizeDate(midMonth))) {
-        currentStreak++;
-        bestStreak = Math.max(bestStreak, currentStreak);
-      } else {
-        currentStreak = 0;
-      }
-      // Move to next month
-      currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
-    }
-  } else {
-    // Daily/Custom
-    let currentDate = new Date(startDate);
-    
-    while (currentDate <= today) {
-      if (isHabitScheduledForDate(habit, currentDate)) {
-        if (isHabitCompleteOnDate(habit, progressEvents, normalizeDate(currentDate))) {
-          currentStreak++;
-          bestStreak = Math.max(bestStreak, currentStreak);
-        } else {
-          currentStreak = 0;
-        }
-      }
-      currentDate = addDays(currentDate, 1);
-    }
+    currentDate = addDays(currentDate, 1);
   }
 
   return bestStreak;

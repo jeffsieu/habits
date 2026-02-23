@@ -62,15 +62,15 @@ export function SyncPromptDialog({
               <p className="text-sm text-muted-foreground">
                 {habitCount} habit{habitCount !== 1 ? "s" : ""}
                 {tagCount > 0 && (
-                  <>, {tagCount} tag{tagCount !== 1 ? "s" : ""}</>
+                  <>
+                    , {tagCount} tag{tagCount !== 1 ? "s" : ""}
+                  </>
                 )}
               </p>
             </div>
           </div>
 
-          {error && (
-            <p className="mt-3 text-sm text-destructive">{error}</p>
-          )}
+          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">

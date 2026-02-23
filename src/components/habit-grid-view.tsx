@@ -2,7 +2,13 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { Habit, HabitProgressEvent, HabitTag, RepeatType, CompletionType } from "@/types/habit";
+import {
+  Habit,
+  HabitProgressEvent,
+  HabitTag,
+  RepeatType,
+  CompletionType,
+} from "@/types/habit";
 import {
   normalizeDate,
   isHabitScheduledForDate,
@@ -160,10 +166,15 @@ function SortableHabitRow({
           progressEvents,
           dateStr,
         );
-        const currentValue = getProgressValueOnDate(progressEvents, habit.id, dateStr);
+        const currentValue = getProgressValueOnDate(
+          progressEvents,
+          habit.id,
+          dateStr,
+        );
         const isToday = dateStr === todayStr;
         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-        const isOccurrenceBased = habit.completionType === CompletionType.X_OCCURRENCES;
+        const isOccurrenceBased =
+          habit.completionType === CompletionType.X_OCCURRENCES;
 
         return (
           <td key={idx} className={cn("p-0.5", isWeekend && "bg-muted/30")}>
@@ -183,20 +194,30 @@ function SortableHabitRow({
               >
                 {/* Count display - centered */}
                 {isScheduled && currentValue > 0 && (
-                  <span className={cn(
-                    "text-[10px] font-semibold leading-none z-10",
-                    isComplete ? "text-primary-foreground" : "text-foreground"
-                  )}>
+                  <span
+                    className={cn(
+                      "text-[10px] font-semibold leading-none z-10",
+                      isComplete
+                        ? "text-primary-foreground"
+                        : "text-foreground",
+                    )}
+                  >
                     {currentValue}
                   </span>
                 )}
-                
+
                 {/* Buttons overlay - visible on hover */}
                 {isScheduled && (
                   <div className="absolute inset-0 flex opacity-0 group-hover:opacity-100 transition-opacity">
                     {/* Minus button - left */}
                     <button
-                      onClick={() => onLogProgress(habit.id, dateStr, Math.max(0, currentValue - 1))}
+                      onClick={() =>
+                        onLogProgress(
+                          habit.id,
+                          dateStr,
+                          Math.max(0, currentValue - 1),
+                        )
+                      }
                       disabled={currentValue <= 0}
                       className={cn(
                         "flex-1 flex items-center justify-center rounded-l-sm transition-colors",
@@ -212,7 +233,9 @@ function SortableHabitRow({
                     </button>
                     {/* Plus button - right */}
                     <button
-                      onClick={() => onLogProgress(habit.id, dateStr, currentValue + 1)}
+                      onClick={() =>
+                        onLogProgress(habit.id, dateStr, currentValue + 1)
+                      }
                       className={cn(
                         "flex-1 flex items-center justify-center rounded-r-sm transition-colors",
                         isComplete
@@ -272,14 +295,14 @@ function SortableHabitRow({
 
       {/* Streak cell */}
       <td className="px-3 py-2 text-right">
-        <div className={cn(
-          "flex items-center justify-end gap-1",
-          streakSecure ? "text-warning" : "text-muted-foreground"
-        )}>
+        <div
+          className={cn(
+            "flex items-center justify-end gap-1",
+            streakSecure ? "text-warning" : "text-muted-foreground",
+          )}
+        >
           <Flame className="w-3.5 h-3.5" />
-          <span className="text-sm font-semibold tabular-nums">
-            {streak}
-          </span>
+          <span className="text-sm font-semibold tabular-nums">{streak}</span>
         </div>
       </td>
     </tr>
@@ -336,11 +359,6 @@ export function HabitGridView({
 
   const getStreakDisplay = (habit: Habit) => {
     const streak = calculateCurrentStreak(habit, progressEvents);
-    if (habit.repeatType === RepeatType.WEEKLY) {
-      return `${streak}w`;
-    } else if (habit.repeatType === RepeatType.MONTHLY) {
-      return `${streak}m`;
-    }
     return streak.toString();
   };
 
@@ -379,100 +397,100 @@ export function HabitGridView({
         <table className="w-full border-collapse min-w-200">
           {/* Header row */}
           <thead>
-          <tr className="border-b border-border">
-            <th className="sticky left-0 z-10 bg-card px-4 py-3 text-left min-w-50">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-foreground">
-                  All Habits
-                </span>
-              </div>
-            </th>
+            <tr className="border-b border-border">
+              <th className="sticky left-0 z-10 bg-card px-4 py-3 text-left min-w-50">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground">
+                    All Habits
+                  </span>
+                </div>
+              </th>
 
-            {dateColumns.map((date, idx) => {
-              const { day, date: dateNum } = formatColumnHeader(date);
-              const isToday = normalizeDate(date) === todayStr;
-              const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+              {dateColumns.map((date, idx) => {
+                const { day, date: dateNum } = formatColumnHeader(date);
+                const isToday = normalizeDate(date) === todayStr;
+                const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
-              return (
-                <th
-                  key={idx}
-                  className={cn(
-                    "px-1 py-2 text-center min-w-11 w-11",
-                    isWeekend && "bg-muted/30",
-                  )}
-                >
-                  <div
+                return (
+                  <th
+                    key={idx}
                     className={cn(
-                      "flex flex-col items-center gap-0.5",
-                      isToday && "relative",
+                      "px-1 py-2 text-center min-w-11 w-11",
+                      isWeekend && "bg-muted/30",
                     )}
                   >
-                    {isToday && (
-                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary" />
-                    )}
-                    <span
+                    <div
                       className={cn(
-                        "text-[10px] font-medium uppercase",
-                        isToday ? "text-primary" : "text-muted-foreground",
+                        "flex flex-col items-center gap-0.5",
+                        isToday && "relative",
                       )}
                     >
-                      {isToday ? "Today" : `${day} ${dateNum}`}
-                    </span>
-                  </div>
-                </th>
-              );
-            })}
+                      {isToday && (
+                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary" />
+                      )}
+                      <span
+                        className={cn(
+                          "text-[10px] font-medium uppercase",
+                          isToday ? "text-primary" : "text-muted-foreground",
+                        )}
+                      >
+                        {isToday ? "Today" : `${day} ${dateNum}`}
+                      </span>
+                    </div>
+                  </th>
+                );
+              })}
 
-            {/* Current period column */}
-            <th className="px-2 py-2 text-center min-w-15 bg-primary/5 border-l border-border">
-              <span className="text-[10px] font-medium text-primary">
-                Period
-              </span>
-            </th>
+              {/* Current period column */}
+              <th className="px-2 py-2 text-center min-w-15 bg-primary/5 border-l border-border">
+                <span className="text-[10px] font-medium text-primary">
+                  Period
+                </span>
+              </th>
 
-            {/* Streak column */}
-            <th className="px-3 py-2 text-right min-w-12">
-              <Flame className="w-3.5 h-3.5 text-muted-foreground inline" />
-            </th>
-          </tr>
-        </thead>
-
-        <SortableContext
-          items={habits.map((h) => h.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          <tbody>
-            {habits.map((habit) => (
-              <SortableHabitRow
-                key={habit.id}
-                habit={habit}
-                dateColumns={dateColumns}
-                todayStr={todayStr}
-                progressEvents={progressEvents}
-                onCellClick={handleCellClick}
-                onLogProgress={onLogProgress}
-                getStreakDisplay={getStreakDisplay}
-                getIsStreakSecure={getIsStreakSecure}
-                getCurrentPeriodInfo={getCurrentPeriodInfo}
-              />
-            ))}
-
-            {/* Add habit row */}
-            <tr>
-              <td colSpan={dateColumns.length + 3} className="py-2">
-                <button
-                  onClick={onAddHabit}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add habit
-                </button>
-              </td>
+              {/* Streak column */}
+              <th className="px-3 py-2 text-right min-w-12">
+                <Flame className="w-3.5 h-3.5 text-muted-foreground inline" />
+              </th>
             </tr>
-          </tbody>
-        </SortableContext>
-      </table>
-    </DndContext>
+          </thead>
+
+          <SortableContext
+            items={habits.map((h) => h.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <tbody>
+              {habits.map((habit) => (
+                <SortableHabitRow
+                  key={habit.id}
+                  habit={habit}
+                  dateColumns={dateColumns}
+                  todayStr={todayStr}
+                  progressEvents={progressEvents}
+                  onCellClick={handleCellClick}
+                  onLogProgress={onLogProgress}
+                  getStreakDisplay={getStreakDisplay}
+                  getIsStreakSecure={getIsStreakSecure}
+                  getCurrentPeriodInfo={getCurrentPeriodInfo}
+                />
+              ))}
+
+              {/* Add habit row */}
+              <tr>
+                <td colSpan={dateColumns.length + 3} className="py-2">
+                  <button
+                    onClick={onAddHabit}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add habit
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </SortableContext>
+        </table>
+      </DndContext>
     </div>
   );
 }
