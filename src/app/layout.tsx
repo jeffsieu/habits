@@ -4,8 +4,19 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { SessionProvider } from "@/components/session-provider";
 
 export const metadata: Metadata = {
-  title: "Habits — Build Better Routines",
+  title: "Habits - Build Better Habits",
   description: "Track your daily habits and build better routines with style",
+  openGraph: {
+    title: "Habits - Build Better Habits",
+    description: "Track your daily habits and build better routines with style",
+    siteName: "Habits",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Habits - Build Better Habits",
+    description: "Track your daily habits and build better routines with style",
+  },
 };
 
 export default function RootLayout({
