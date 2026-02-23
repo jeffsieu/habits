@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
-import { HabitsProvider, useHabitsContext } from "@/contexts/habits-context";
+import { useHabitsContext } from "@/contexts/habits-context";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileSidebarTrigger } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -89,8 +89,6 @@ function AppLayoutInner({ children }: AppLayoutProps) {
 
 export function AppLayout({ children }: AppLayoutProps) {
   return (
-    <HabitsProvider>
-      <AppLayoutInner>{children}</AppLayoutInner>
-    </HabitsProvider>
+    <AppLayoutInner>{children}</AppLayoutInner>
   );
 }

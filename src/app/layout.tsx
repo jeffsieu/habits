@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
-import { SessionProvider } from "@/components/session-provider";
+import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
   title: "Habits - Build Better Habits",
@@ -27,18 +26,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased font-sans">
-        <SessionProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            {/* Grain texture overlay for warmth */}
-            <div className="grain-overlay" aria-hidden="true" />
-            {children}
-          </ThemeProvider>
-        </SessionProvider>
+        <Providers>
+          {/* Grain texture overlay for warmth */}
+          <div className="grain-overlay" aria-hidden="true" />
+          {children}
+        </Providers>
       </body>
     </html>
   );
