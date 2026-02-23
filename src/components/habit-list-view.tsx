@@ -29,7 +29,7 @@ interface HabitListViewProps {
   onAddHabit: () => void;
 }
 
-const INITIAL_DAYS = 2; // Today and Yesterday
+const INITIAL_DAYS = 1; // Today only
 const LOAD_MORE_BATCH = 7; // Load a week at a time
 
 interface DayGroup {
@@ -159,8 +159,9 @@ function HabitListItem({
           className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
           style={{
             backgroundColor: habit.color
-              ? `${habit.color}20`
+              ? `${habit.color}15`
               : "hsl(var(--muted))",
+            color: habit.color || undefined,
           }}
         >
           <HabitIconDisplay iconName={habit.icon} className="w-4 h-4" />
