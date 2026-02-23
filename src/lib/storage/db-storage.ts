@@ -29,13 +29,11 @@ function transformHabit(dbHabit: {
   isGoodHabit: boolean;
   color: string | null;
   icon: string | null;
-  repeatType: string;
-  repeatWeekDay: number | null;
-  repeatMonthDay: number | null;
+  recordingType: string;
+  goalInterval: string;
+  goalTarget: number | null;
   customIntervalDays: number | null;
-  customDaysOfWeek: number[];
-  completionType: string;
-  targetOccurrences: number | null;
+  scheduledDaysOfWeek: number[];
   startDate: Date;
   endConditionType: string | null;
   endConditionValue: string | null;
@@ -50,13 +48,11 @@ function transformHabit(dbHabit: {
     isGoodHabit: dbHabit.isGoodHabit,
     color: dbHabit.color,
     icon: dbHabit.icon,
-    repeatType: dbHabit.repeatType as Habit["repeatType"],
-    repeatWeekDay: dbHabit.repeatWeekDay,
-    repeatMonthDay: dbHabit.repeatMonthDay,
+    recordingType: dbHabit.recordingType as Habit["recordingType"],
+    goalInterval: dbHabit.goalInterval as Habit["goalInterval"],
+    goalTarget: dbHabit.goalTarget,
     customIntervalDays: dbHabit.customIntervalDays,
-    customDaysOfWeek: dbHabit.customDaysOfWeek,
-    completionType: dbHabit.completionType as Habit["completionType"],
-    targetOccurrences: dbHabit.targetOccurrences,
+    scheduledDaysOfWeek: dbHabit.scheduledDaysOfWeek,
     startDate: dbHabit.startDate.toISOString(),
     endConditionType: dbHabit.endConditionType as Habit["endConditionType"],
     endConditionValue: dbHabit.endConditionValue,
@@ -122,13 +118,11 @@ export async function createHabit(input: CreateHabitInput): Promise<Habit> {
       isGoodHabit: input.isGoodHabit,
       color: input.color,
       icon: input.icon,
-      repeatType: input.repeatType,
-      repeatWeekDay: input.repeatWeekDay,
-      repeatMonthDay: input.repeatMonthDay,
+      recordingType: input.recordingType,
+      goalInterval: input.goalInterval,
+      goalTarget: input.goalTarget,
       customIntervalDays: input.customIntervalDays,
-      customDaysOfWeek: input.customDaysOfWeek ?? [],
-      completionType: input.completionType,
-      targetOccurrences: input.targetOccurrences,
+      scheduledDaysOfWeek: input.scheduledDaysOfWeek ?? [],
       startDate: new Date(input.startDate),
       endConditionType: input.endConditionType,
       endConditionValue: input.endConditionValue,
@@ -330,13 +324,11 @@ export async function migrateLocalDataToDb(data: {
         isGoodHabit: habit.isGoodHabit,
         color: habit.color,
         icon: habit.icon,
-        repeatType: habit.repeatType,
-        repeatWeekDay: habit.repeatWeekDay,
-        repeatMonthDay: habit.repeatMonthDay,
+        recordingType: habit.recordingType,
+        goalInterval: habit.goalInterval,
+        goalTarget: habit.goalTarget,
         customIntervalDays: habit.customIntervalDays,
-        customDaysOfWeek: habit.customDaysOfWeek,
-        completionType: habit.completionType,
-        targetOccurrences: habit.targetOccurrences,
+        scheduledDaysOfWeek: habit.scheduledDaysOfWeek,
         startDate: new Date(habit.startDate),
         endConditionType: habit.endConditionType,
         endConditionValue: habit.endConditionValue,

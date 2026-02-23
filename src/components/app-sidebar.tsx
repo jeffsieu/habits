@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Habit, HabitProgressEvent, HabitTag, RepeatType } from "@/types/habit";
+import { Habit, HabitProgressEvent, HabitTag } from "@/types/habit";
 import { HabitIconDisplay } from "@/lib/habit-icons";
 import { calculateCurrentStreak, isStreakSecure } from "@/lib/habit-utils";
 import { cn } from "@/lib/utils";

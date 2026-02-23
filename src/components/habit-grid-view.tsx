@@ -6,7 +6,7 @@ import {
   Habit,
   HabitProgressEvent,
   HabitTag,
-  CompletionType,
+  RecordingType,
 } from "@/types/habit";
 import {
   normalizeDate,
@@ -155,7 +155,8 @@ function SortableHabitRow({
         const isToday = dateStr === todayStr;
         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
         const isOccurrenceBased =
-          habit.completionType === CompletionType.X_OCCURRENCES;
+          habit.recordingType === RecordingType.COUNT ||
+          habit.recordingType === RecordingType.VALUE;
 
         return (
           <td

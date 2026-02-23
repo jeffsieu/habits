@@ -95,34 +95,53 @@ export function useHabits(): HabitsState & HabitsActions {
   const { habits, tags, progressEvents } = data;
 
   // Wrapper setters that update the combined state
-  const setHabits = useCallback((updater: Habit[] | ((prev: Habit[]) => Habit[])) => {
-    setData(prev => ({
-      ...prev,
-      habits: typeof updater === 'function' ? updater(prev.habits) : updater,
-    }));
-  }, []);
+  const setHabits = useCallback(
+    (updater: Habit[] | ((prev: Habit[]) => Habit[])) => {
+      setData((prev) => ({
+        ...prev,
+        habits: typeof updater === "function" ? updater(prev.habits) : updater,
+      }));
+    },
+    [],
+  );
 
-  const setTags = useCallback((updater: HabitTag[] | ((prev: HabitTag[]) => HabitTag[])) => {
-    setData(prev => ({
-      ...prev,
-      tags: typeof updater === 'function' ? updater(prev.tags) : updater,
-    }));
-  }, []);
+  const setTags = useCallback(
+    (updater: HabitTag[] | ((prev: HabitTag[]) => HabitTag[])) => {
+      setData((prev) => ({
+        ...prev,
+        tags: typeof updater === "function" ? updater(prev.tags) : updater,
+      }));
+    },
+    [],
+  );
 
-  const setProgressEvents = useCallback((updater: HabitProgressEvent[] | ((prev: HabitProgressEvent[]) => HabitProgressEvent[])) => {
-    setData(prev => ({
-      ...prev,
-      progressEvents: typeof updater === 'function' ? updater(prev.progressEvents) : updater,
-    }));
-  }, []);
+  const setProgressEvents = useCallback(
+    (
+      updater:
+        | HabitProgressEvent[]
+        | ((prev: HabitProgressEvent[]) => HabitProgressEvent[]),
+    ) => {
+      setData((prev) => ({
+        ...prev,
+        progressEvents:
+          typeof updater === "function"
+            ? updater(prev.progressEvents)
+            : updater,
+      }));
+    },
+    [],
+  );
 
   // Load from localStorage after mount to avoid hydration mismatch
   // This is the standard pattern for SSR-safe localStorage reading - we MUST set state after mount
   useEffect(() => {
     const loadedHabits = getFromStorage<Habit[]>(STORAGE_KEYS.HABITS, []);
     const loadedTags = getFromStorage<HabitTag[]>(STORAGE_KEYS.TAGS, []);
-    const loadedProgress = getFromStorage<HabitProgressEvent[]>(STORAGE_KEYS.PROGRESS, []);
-    
+    const loadedProgress = getFromStorage<HabitProgressEvent[]>(
+      STORAGE_KEYS.PROGRESS,
+      [],
+    );
+
     // Use queueMicrotask to satisfy the linter while still running synchronously in the effect
     queueMicrotask(() => {
       setData({
@@ -144,32 +163,33 @@ export function useHabits(): HabitsState & HabitsActions {
   }, [data, isLoaded]);
 
   // Habit CRUD
-  const addHabit = useCallback((input: CreateHabitInput): Habit => {
-    const now = new Date().toISOString();
-    const newHabit: Habit = {
-      id: generateId(),
-      name: input.name,
-      description: input.description || null,
-      isGoodHabit: input.isGoodHabit,
-      color: input.color || null,
-      icon: input.icon || null,
-      repeatType: input.repeatType,
-      repeatWeekDay: input.repeatWeekDay ?? null,
-      repeatMonthDay: input.repeatMonthDay ?? null,
-      customIntervalDays: input.customIntervalDays ?? null,
-      customDaysOfWeek: input.customDaysOfWeek || [],
-      completionType: input.completionType,
-      targetOccurrences: input.targetOccurrences ?? null,
-      startDate: input.startDate,
-      endConditionType: input.endConditionType || null,
-      endConditionValue: input.endConditionValue || null,
-      createdAt: now,
-      updatedAt: now,
-      tagIds: input.tagIds || [],
-    };
-    setHabits((prev) => [...prev, newHabit]);
-    return newHabit;
-  }, [setHabits]);
+  const addHabit = useCallback(
+    (input: CreateHabitInput): Habit => {
+      const now = new Date().toISOString();
+      const newHabit: Habit = {
+        id: generateId(),
+        name: input.name,
+        description: input.description || null,
+        isGoodHabit: input.isGoodHabit,
+        color: input.color || null,
+        icon: input.icon || null,
+        recordingType: input.recordingType,
+        goalInterval: input.goalInterval,
+        goalTarget: input.goalTarget ?? null,
+        customIntervalDays: input.customIntervalDays ?? null,
+        scheduledDaysOfWeek: input.scheduledDaysOfWeek || [],
+        startDate: input.startDate,
+        endConditionType: input.endConditionType || null,
+        endConditionValue: input.endConditionValue || null,
+        createdAt: now,
+        updatedAt: now,
+        tagIds: input.tagIds || [],
+      };
+      setHabits((prev) => [...prev, newHabit]);
+      return newHabit;
+    },
+    [setHabits],
+  );
 
   const updateHabit = useCallback(
     (input: UpdateHabitInput): Habit | null => {
@@ -193,30 +213,36 @@ export function useHabits(): HabitsState & HabitsActions {
     [habits, setHabits],
   );
 
-  const deleteHabit = useCallback((id: string): void => {
-    setHabits((prev) => prev.filter((h) => h.id !== id));
-    // Also delete related progress events
-    setProgressEvents((prev) => prev.filter((p) => p.habitId !== id));
-  }, [setHabits, setProgressEvents]);
+  const deleteHabit = useCallback(
+    (id: string): void => {
+      setHabits((prev) => prev.filter((h) => h.id !== id));
+      // Also delete related progress events
+      setProgressEvents((prev) => prev.filter((p) => p.habitId !== id));
+    },
+    [setHabits, setProgressEvents],
+  );
 
-  const reorderHabits = useCallback((habitIds: string[]): void => {
-    setHabits((prev) => {
-      const habitMap = new Map(prev.map((h) => [h.id, h]));
-      const reordered: Habit[] = [];
-      for (const id of habitIds) {
-        const habit = habitMap.get(id);
-        if (habit) {
-          reordered.push(habit);
-          habitMap.delete(id);
+  const reorderHabits = useCallback(
+    (habitIds: string[]): void => {
+      setHabits((prev) => {
+        const habitMap = new Map(prev.map((h) => [h.id, h]));
+        const reordered: Habit[] = [];
+        for (const id of habitIds) {
+          const habit = habitMap.get(id);
+          if (habit) {
+            reordered.push(habit);
+            habitMap.delete(id);
+          }
         }
-      }
-      // Add any remaining habits that weren't in the reorder list
-      for (const habit of habitMap.values()) {
-        reordered.push(habit);
-      }
-      return reordered;
-    });
-  }, [setHabits]);
+        // Add any remaining habits that weren't in the reorder list
+        for (const habit of habitMap.values()) {
+          reordered.push(habit);
+        }
+        return reordered;
+      });
+    },
+    [setHabits],
+  );
 
   const getHabit = useCallback(
     (id: string): Habit | undefined => {
@@ -238,18 +264,21 @@ export function useHabits(): HabitsState & HabitsActions {
   );
 
   // Tag CRUD
-  const addTag = useCallback((input: CreateTagInput): HabitTag => {
-    const now = new Date().toISOString();
-    const newTag: HabitTag = {
-      id: generateId(),
-      name: input.name,
-      color: input.color || null,
-      createdAt: now,
-      updatedAt: now,
-    };
-    setTags((prev) => [...prev, newTag]);
-    return newTag;
-  }, [setTags]);
+  const addTag = useCallback(
+    (input: CreateTagInput): HabitTag => {
+      const now = new Date().toISOString();
+      const newTag: HabitTag = {
+        id: generateId(),
+        name: input.name,
+        color: input.color || null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      setTags((prev) => [...prev, newTag]);
+      return newTag;
+    },
+    [setTags],
+  );
 
   const updateTag = useCallback(
     (id: string, input: Partial<CreateTagInput>): HabitTag | null => {
@@ -273,17 +302,20 @@ export function useHabits(): HabitsState & HabitsActions {
     [tags, setTags],
   );
 
-  const deleteTag = useCallback((id: string): void => {
-    setTags((prev) => prev.filter((t) => t.id !== id));
-    // Remove tag from all habits
-    setHabits((prev) =>
-      prev.map((h) => ({
-        ...h,
-        tagIds: h.tagIds.filter((tagId) => tagId !== id),
-        updatedAt: new Date().toISOString(),
-      })),
-    );
-  }, [setTags, setHabits]);
+  const deleteTag = useCallback(
+    (id: string): void => {
+      setTags((prev) => prev.filter((t) => t.id !== id));
+      // Remove tag from all habits
+      setHabits((prev) =>
+        prev.map((h) => ({
+          ...h,
+          tagIds: h.tagIds.filter((tagId) => tagId !== id),
+          updatedAt: new Date().toISOString(),
+        })),
+      );
+    },
+    [setTags, setHabits],
+  );
 
   const getTag = useCallback(
     (id: string): HabitTag | undefined => {
@@ -354,9 +386,12 @@ export function useHabits(): HabitsState & HabitsActions {
     [progressEvents, setProgressEvents],
   );
 
-  const deleteProgress = useCallback((id: string): void => {
-    setProgressEvents((prev) => prev.filter((p) => p.id !== id));
-  }, [setProgressEvents]);
+  const deleteProgress = useCallback(
+    (id: string): void => {
+      setProgressEvents((prev) => prev.filter((p) => p.id !== id));
+    },
+    [setProgressEvents],
+  );
 
   const getProgressForHabit = useCallback(
     (habitId: string): HabitProgressEvent[] => {

@@ -70,16 +70,17 @@ model VerificationToken {
 }
 
 // Enums for Habit configuration
-enum RepeatType {
+enum GoalInterval {
   DAILY
   WEEKLY
   MONTHLY
   CUSTOM
 }
 
-enum CompletionType {
+enum RecordingType {
   YES_NO
-  X_OCCURRENCES
+  COUNT
+  VALUE
 }
 
 enum EndConditionType {
@@ -102,16 +103,16 @@ model Habit {
   userId String?
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Repeat configuration
-  repeatType         RepeatType @default(DAILY)
-  repeatWeekDay      Int? // 0-6 for Sunday-Saturday (for WEEKLY)
-  repeatMonthDay     Int? // 1-31 (for MONTHLY)
-  customIntervalDays Int? // Every X days (for CUSTOM)
-  customDaysOfWeek   Int[] // Array of weekdays 0-6 (for CUSTOM)
+  // Recording type: how progress is logged each day
+  recordingType RecordingType @default(YES_NO)
 
-  // Completion configuration
-  completionType    CompletionType @default(YES_NO)
-  targetOccurrences Int? // Target for X_OCCURRENCES type
+  // Goal configuration: target within an interval
+  goalInterval       GoalInterval @default(DAILY)
+  goalTarget         Float? // Target count/value for the interval
+  customIntervalDays Int? // Every X days (for CUSTOM interval)
+
+  // Scheduling: which days the habit appears on (empty = every day)
+  scheduledDaysOfWeek Int[] // Array of weekdays 0-6 (Sun-Sat)
 
   // Date configuration
   startDate         DateTime          @default(now())
@@ -156,7 +157,7 @@ model HabitProgressEvent {
   id      String   @id @default(cuid())
   habitId String
   date    DateTime // The day being logged
-  value   Int      @default(1) // User-entered amount; 1 for yes/no completion
+  value   Float    @default(1) // User-entered amount; supports decimals for VALUE type
   note    String?
 
   // Timestamps

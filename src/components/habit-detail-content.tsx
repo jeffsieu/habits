@@ -3,7 +3,12 @@
 import { useHabitsContext } from "@/contexts/habits-context";
 import { CalendarView } from "@/components/calendar-view";
 import { HabitForm } from "@/components/habit-form";
-import { CreateHabitInput, RepeatType, CompletionType, WEEKDAY_NAMES } from "@/types/habit";
+import {
+  CreateHabitInput,
+  GoalInterval,
+  RecordingType,
+  WEEKDAY_NAMES,
+} from "@/types/habit";
 import {
   formatDate,
   calculateCurrentStreak,
@@ -18,11 +23,11 @@ import { HabitIconDisplay } from "@/lib/habit-icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Flame, 
-  Trophy, 
-  CalendarDays, 
-  Target, 
+import {
+  Flame,
+  Trophy,
+  CalendarDays,
+  Target,
   Pencil,
   ArrowLeft,
   BarChart3,
@@ -40,14 +45,8 @@ interface HabitDetailContentProps {
 }
 
 export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
-  const {
-    habits,
-    tags,
-    progressEvents,
-    updateHabit,
-    addTag,
-    logProgress,
-  } = useHabitsContext();
+  const { habits, tags, progressEvents, updateHabit, addTag, logProgress } =
+    useHabitsContext();
 
   const habit = habits.find((h) => h.id === habitId);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -76,10 +75,14 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
   // Get progress for selected date
   const selectedDateStr = normalizeDate(selectedDate);
   const selectedDateProgress = progressEvents.find(
-    (p) => p.habitId === habit.id && p.date === selectedDateStr
+    (p) => p.habitId === habit.id && p.date === selectedDateStr,
   );
   const selectedDateValue = selectedDateProgress?.value ?? 0;
-  const isSelectedDateComplete = isHabitCompleteOnDate(habit, progressEvents, selectedDateStr);
+  const isSelectedDateComplete = isHabitCompleteOnDate(
+    habit,
+    progressEvents,
+    selectedDateStr,
+  );
 
   const handleLogProgressForDate = (value: number) => {
     logProgress({
@@ -98,29 +101,50 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
   };
 
   const getRepeatDescription = () => {
-    switch (habit.repeatType) {
-      case RepeatType.DAILY:
-        return "Every day";
-      case RepeatType.WEEKLY:
-        return `Every week (${WEEKDAY_NAMES[habit.repeatWeekDay ?? 1]})`;
-      case RepeatType.MONTHLY:
-        return `Every month (day ${habit.repeatMonthDay ?? 1})`;
-      case RepeatType.CUSTOM:
-        if (habit.customDaysOfWeek && habit.customDaysOfWeek.length > 0) {
-          const days = habit.customDaysOfWeek.map((d) => WEEKDAY_NAMES[d].slice(0, 3)).join(", ");
-          return `Custom (${days})`;
-        }
-        return `Every ${habit.customIntervalDays ?? 1} days`;
+    // Build description based on goal interval
+    let intervalDesc = "";
+    switch (habit.goalInterval) {
+      case GoalInterval.DAILY:
+        intervalDesc = "Daily";
+        break;
+      case GoalInterval.WEEKLY:
+        intervalDesc = "Weekly";
+        break;
+      case GoalInterval.MONTHLY:
+        intervalDesc = "Monthly";
+        break;
+      case GoalInterval.CUSTOM:
+        intervalDesc = `Every ${habit.customIntervalDays ?? 1} days`;
+        break;
       default:
-        return "Unknown";
+        intervalDesc = "Unknown";
     }
+
+    // Add scheduled days info if applicable
+    if (habit.scheduledDaysOfWeek && habit.scheduledDaysOfWeek.length > 0) {
+      const days = habit.scheduledDaysOfWeek
+        .map((d) => WEEKDAY_NAMES[d].slice(0, 3))
+        .join(", ");
+      return `${intervalDesc} (${days})`;
+    }
+    return intervalDesc;
   };
 
   const getCompletionDescription = () => {
-    if (habit.completionType === CompletionType.YES_NO) {
-      return "Yes/No completion";
+    const target = habit.goalTarget ?? 1;
+    if (habit.recordingType === RecordingType.YES_NO) {
+      if (habit.goalInterval === GoalInterval.DAILY) {
+        return "Yes/No completion";
+      }
+      return `${target} times to complete`;
     }
-    return `${habit.targetOccurrences ?? 1} times to complete`;
+    if (habit.recordingType === RecordingType.COUNT) {
+      return `${target} times to complete`;
+    }
+    if (habit.recordingType === RecordingType.VALUE) {
+      return `Target: ${target}`;
+    }
+    return "Unknown";
   };
 
   return (
@@ -134,7 +158,9 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
               <div
                 className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0"
                 style={{
-                  backgroundColor: habit.color ? `${habit.color}15` : "var(--muted)",
+                  backgroundColor: habit.color
+                    ? `${habit.color}15`
+                    : "var(--muted)",
                   color: habit.color || "var(--muted-foreground)",
                 }}
               >
@@ -153,7 +179,9 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                   )}
                 </div>
                 {habit.description && (
-                  <p className="text-sm text-muted-foreground">{habit.description}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {habit.description}
+                  </p>
                 )}
                 {habitTags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">
@@ -162,7 +190,9 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                         key={tag.id}
                         className="px-2 py-0.5 text-xs font-medium rounded-full"
                         style={{
-                          backgroundColor: tag.color ? `${tag.color}15` : "var(--muted)",
+                          backgroundColor: tag.color
+                            ? `${tag.color}15`
+                            : "var(--muted)",
                           color: tag.color || "var(--muted-foreground)",
                         }}
                       >
@@ -174,7 +204,11 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
               </div>
             </div>
 
-            <Button onClick={() => setIsFormOpen(true)} variant="outline" size="sm">
+            <Button
+              onClick={() => setIsFormOpen(true)}
+              variant="outline"
+              size="sm"
+            >
               <Pencil className="w-4 h-4 mr-2" />
               Edit
             </Button>
@@ -195,34 +229,51 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
               </h2>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <div className={cn(
-                    "flex items-center gap-2",
-                    isStreakSecure(habit, progressEvents) ? "text-warning" : "text-muted-foreground"
-                  )}>
+                  <div
+                    className={cn(
+                      "flex items-center gap-2",
+                      isStreakSecure(habit, progressEvents)
+                        ? "text-warning"
+                        : "text-muted-foreground",
+                    )}
+                  >
                     <Flame className="w-5 h-5" />
-                    <span className="text-2xl font-display font-semibold">{currentStreak}</span>
+                    <span className="text-2xl font-display font-semibold">
+                      {currentStreak}
+                    </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">Current Streak</p>
+                  <p className="text-xs text-muted-foreground">
+                    Current Streak
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-primary">
                     <Trophy className="w-5 h-5" />
-                    <span className="text-2xl font-display font-semibold">{bestStreak}</span>
+                    <span className="text-2xl font-display font-semibold">
+                      {bestStreak}
+                    </span>
                   </div>
                   <p className="text-xs text-muted-foreground">Best Streak</p>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-success">
                     <CalendarDays className="w-5 h-5" />
-                    <span className="text-2xl font-display font-semibold">{totalCompletedDays}</span>
+                    <span className="text-2xl font-display font-semibold">
+                      {totalCompletedDays}
+                    </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">Days Completed</p>
+                  <p className="text-xs text-muted-foreground">
+                    Days Completed
+                  </p>
                 </div>
-                {habit.completionType === CompletionType.X_OCCURRENCES && (
+                {(habit.recordingType === RecordingType.COUNT ||
+                  habit.recordingType === RecordingType.VALUE) && (
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-accent-foreground">
                       <Target className="w-5 h-5" />
-                      <span className="text-2xl font-display font-semibold">{totalValue}</span>
+                      <span className="text-2xl font-display font-semibold">
+                        {totalValue}
+                      </span>
                     </div>
                     <p className="text-xs text-muted-foreground">Total Count</p>
                   </div>
@@ -249,14 +300,18 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                     <Check className="w-4 h-4" />
                     Completion
                   </span>
-                  <span className="font-medium">{getCompletionDescription()}</span>
+                  <span className="font-medium">
+                    {getCompletionDescription()}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground flex items-center gap-2">
                     <CalendarDays className="w-4 h-4" />
                     Started
                   </span>
-                  <span className="font-medium">{formatDate(habit.startDate, "short")}</span>
+                  <span className="font-medium">
+                    {formatDate(habit.startDate, "short")}
+                  </span>
                 </div>
               </div>
             </div>
@@ -267,7 +322,9 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
             <div className="bg-card rounded-xl border border-border p-4">
               <CalendarView
                 habits={[habit]}
-                progressEvents={progressEvents.filter((p) => p.habitId === habit.id)}
+                progressEvents={progressEvents.filter(
+                  (p) => p.habitId === habit.id,
+                )}
                 selectedDate={selectedDate}
                 onDateSelect={setSelectedDate}
               />
@@ -287,18 +344,20 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                         Completed
                       </span>
                     ) : selectedDateValue > 0 ? (
-                      `${selectedDateValue} / ${habit.targetOccurrences ?? 1}`
+                      `${selectedDateValue} / ${habit.goalTarget ?? 1}`
                     ) : (
                       "Not logged"
                     )}
                   </p>
                 </div>
 
-                {habit.completionType === CompletionType.YES_NO ? (
+                {habit.recordingType === RecordingType.YES_NO ? (
                   <Button
                     variant={isSelectedDateComplete ? "default" : "outline"}
                     size="sm"
-                    onClick={() => handleLogProgressForDate(isSelectedDateComplete ? 0 : 1)}
+                    onClick={() =>
+                      handleLogProgressForDate(isSelectedDateComplete ? 0 : 1)
+                    }
                     className="gap-2"
                   >
                     <Check className="w-4 h-4" />
@@ -310,7 +369,9 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                       variant="outline"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => handleLogProgressForDate(selectedDateValue - 1)}
+                      onClick={() =>
+                        handleLogProgressForDate(selectedDateValue - 1)
+                      }
                       disabled={selectedDateValue <= 0}
                     >
                       <Minus className="w-4 h-4" />
@@ -319,14 +380,18 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                       type="number"
                       min={0}
                       value={selectedDateValue}
-                      onChange={(e) => handleLogProgressForDate(parseInt(e.target.value) || 0)}
+                      onChange={(e) =>
+                        handleLogProgressForDate(parseInt(e.target.value) || 0)
+                      }
                       className="w-16 h-8 text-center"
                     />
                     <Button
                       variant="outline"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => handleLogProgressForDate(selectedDateValue + 1)}
+                      onClick={() =>
+                        handleLogProgressForDate(selectedDateValue + 1)
+                      }
                     >
                       <Plus className="w-4 h-4" />
                     </Button>

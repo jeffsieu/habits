@@ -6,7 +6,7 @@ import {
   Habit,
   HabitProgressEvent,
   HabitTag,
-  CompletionType,
+  RecordingType,
 } from "@/types/habit";
 import {
   normalizeDate,
@@ -18,7 +18,8 @@ import { HabitIconDisplay } from "@/lib/habit-icons";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, ChevronDown, Loader2 } from "lucide-react";
+import { Plus, Minus, ChevronDown, Loader2, Edit3 } from "lucide-react";
+import { ValueInputDialog } from "@/components/value-input-dialog";
 
 interface HabitListViewProps {
   habits: Habit[];
@@ -110,12 +111,16 @@ function HabitListItem({
   progressEvents,
   onLogProgress,
 }: HabitListItemProps) {
+  const [valueDialogOpen, setValueDialogOpen] = useState(false);
+
   const currentValue = getProgressValueOnDate(
     progressEvents,
     habit.id,
     dateStr,
   );
-  const isYesNo = habit.completionType === CompletionType.YES_NO;
+  const isYesNo = habit.recordingType === RecordingType.YES_NO;
+  const isCount = habit.recordingType === RecordingType.COUNT;
+  const isValue = habit.recordingType === RecordingType.VALUE;
   const isComplete = isYesNo ? currentValue >= 1 : false;
 
   const handleCheckboxChange = (checked: boolean) => {
@@ -129,6 +134,14 @@ function HabitListItem({
   const handleDecrement = () => {
     if (currentValue > 0) {
       onLogProgress(habit.id, dateStr, currentValue - 1);
+    }
+  };
+
+  const handleValueSubmit = (value: number, mode: "replace" | "add") => {
+    if (mode === "replace") {
+      onLogProgress(habit.id, dateStr, value);
+    } else {
+      onLogProgress(habit.id, dateStr, currentValue + value);
     }
   };
 
@@ -157,13 +170,14 @@ function HabitListItem({
 
       {/* Right side: Controls */}
       <div className="shrink-0 ml-3" onClick={(e) => e.preventDefault()}>
-        {isYesNo ? (
+        {isYesNo && (
           <Checkbox
             checked={isComplete}
             onCheckedChange={handleCheckboxChange}
             className="w-6 h-6"
           />
-        ) : (
+        )}
+        {isCount && (
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
@@ -186,6 +200,31 @@ function HabitListItem({
               <Plus className="h-4 w-4" />
             </Button>
           </div>
+        )}
+        {isValue && (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => setValueDialogOpen(true)}
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+              <span className="tabular-nums">
+                {currentValue > 0
+                  ? currentValue.toFixed(1).replace(/\.0$/, "")
+                  : "Log"}
+              </span>
+            </Button>
+            <ValueInputDialog
+              open={valueDialogOpen}
+              onOpenChange={setValueDialogOpen}
+              habitName={habit.name}
+              currentValue={currentValue}
+              habitColor={habit.color}
+              onSubmit={handleValueSubmit}
+            />
+          </>
         )}
       </div>
     </Link>

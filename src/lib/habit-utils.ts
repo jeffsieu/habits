@@ -1,8 +1,8 @@
 import {
   Habit,
   HabitProgressEvent,
-  RepeatType,
-  CompletionType,
+  GoalInterval,
+  RecordingType,
 } from "@/types/habit";
 
 /**
@@ -113,22 +113,22 @@ export function getHabitIntervalBounds(
 ): { start: Date; end: Date } {
   const d = typeof date === "string" ? parseDate(date) : date;
 
-  switch (habit.repeatType) {
-    case RepeatType.WEEKLY:
-      const weekStartDay = habit.repeatWeekDay ?? 1; // Default to Monday
+  switch (habit.goalInterval) {
+    case GoalInterval.WEEKLY:
+      // Default to Monday as week start
       return {
-        start: getWeekStart(d, weekStartDay),
-        end: getWeekEnd(d, weekStartDay),
+        start: getWeekStart(d, 1),
+        end: getWeekEnd(d, 1),
       };
 
-    case RepeatType.MONTHLY:
+    case GoalInterval.MONTHLY:
       return {
         start: getMonthStart(d),
         end: getMonthEnd(d),
       };
 
-    case RepeatType.DAILY:
-    case RepeatType.CUSTOM:
+    case GoalInterval.DAILY:
+    case GoalInterval.CUSTOM:
     default:
       // For daily and custom, the interval is just the single day
       return {
@@ -139,7 +139,8 @@ export function getHabitIntervalBounds(
 }
 
 /**
- * Check if a habit is scheduled for a specific date based on its repeat rules
+ * Check if a habit is scheduled for a specific date based on its scheduling rules
+ * Uses scheduledDaysOfWeek if set, otherwise shows every day
  */
 export function isHabitScheduledForDate(
   habit: Habit,
@@ -161,41 +162,27 @@ export function isHabitScheduledForDate(
     }
   }
 
-  switch (habit.repeatType) {
-    case RepeatType.DAILY:
-      return true;
-
-    case RepeatType.WEEKLY:
-      // Weekly habits are visible every day of the week
-      // The repeatWeekDay indicates which day the week starts on
-      return true;
-
-    case RepeatType.MONTHLY:
-      // Monthly habits are visible every day of the month
-      // Progress is tracked across the entire calendar month
-      return true;
-
-    case RepeatType.CUSTOM:
-      const checkDateDay = checkDate.getDay(); // 0-6 (Sunday-Saturday)
-      // Check custom days of week
-      if (habit.customDaysOfWeek && habit.customDaysOfWeek.length > 0) {
-        if (habit.customDaysOfWeek.includes(checkDateDay)) {
-          return true;
-        }
-      }
-      // Check custom interval (every X days from start)
-      if (habit.customIntervalDays && habit.customIntervalDays > 0) {
-        const daysSinceStart = daysBetween(startDate, checkDate);
-        return (
-          daysSinceStart >= 0 && daysSinceStart % habit.customIntervalDays === 0
-        );
-      }
-      // If no custom config, don't show
+  // Check scheduled days of week if specified
+  if (habit.scheduledDaysOfWeek && habit.scheduledDaysOfWeek.length > 0) {
+    const checkDateDay = checkDate.getDay(); // 0-6 (Sunday-Saturday)
+    if (!habit.scheduledDaysOfWeek.includes(checkDateDay)) {
       return false;
-
-    default:
-      return false;
+    }
   }
+
+  // For CUSTOM goal interval with customIntervalDays, check if today falls on the interval
+  if (
+    habit.goalInterval === GoalInterval.CUSTOM &&
+    habit.customIntervalDays &&
+    habit.customIntervalDays > 0
+  ) {
+    const daysSinceStart = daysBetween(startDate, checkDate);
+    if (daysSinceStart < 0 || daysSinceStart % habit.customIntervalDays !== 0) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /**
@@ -277,22 +264,15 @@ export function isHabitCompleteOnDate(
     date,
   );
 
-  if (habit.completionType === CompletionType.YES_NO) {
-    return progressValue >= 1;
-  }
+  const target = habit.goalTarget ?? 1;
 
-  if (habit.completionType === CompletionType.X_OCCURRENCES) {
-    const target = habit.targetOccurrences ?? 1;
-    if (habit.isGoodHabit) {
-      // At least X occurrences for good habits
-      return progressValue >= target;
-    } else {
-      // At most X occurrences for bad habits (completing means staying below)
-      return progressValue <= target;
-    }
+  if (habit.isGoodHabit) {
+    // At least target for good habits
+    return progressValue >= target;
+  } else {
+    // At most target for bad habits (completing means staying at or below)
+    return progressValue <= target;
   }
-
-  return false;
 }
 
 /**
@@ -348,8 +328,8 @@ export function calculateCurrentStreak(
   // For weekly/monthly habits, use hasProgressOnDate (any entry counts)
   // For daily/custom habits, use isHabitCompleteOnDate (must be complete)
   const isIntervalBasedHabit =
-    habit.repeatType === RepeatType.WEEKLY ||
-    habit.repeatType === RepeatType.MONTHLY;
+    habit.goalInterval === GoalInterval.WEEKLY ||
+    habit.goalInterval === GoalInterval.MONTHLY;
 
   let currentDate = parseDate(today);
 
@@ -418,8 +398,8 @@ export function isStreakSecure(
   // For weekly/monthly habits, any progress secures the streak
   // For daily/custom habits, it must be complete
   const isIntervalBasedHabit =
-    habit.repeatType === RepeatType.WEEKLY ||
-    habit.repeatType === RepeatType.MONTHLY;
+    habit.goalInterval === GoalInterval.WEEKLY ||
+    habit.goalInterval === GoalInterval.MONTHLY;
 
   if (isIntervalBasedHabit) {
     return hasProgressOnDate(progressEvents, habit.id, todayStr);
@@ -458,8 +438,8 @@ export function calculateBestStreak(
   // For weekly/monthly habits, use hasProgressOnDate (any entry counts)
   // For daily/custom habits, use isHabitCompleteOnDate (must be complete)
   const isIntervalBasedHabit =
-    habit.repeatType === RepeatType.WEEKLY ||
-    habit.repeatType === RepeatType.MONTHLY;
+    habit.goalInterval === GoalInterval.WEEKLY ||
+    habit.goalInterval === GoalInterval.MONTHLY;
 
   let currentDate = new Date(startDate);
 

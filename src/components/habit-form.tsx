@@ -5,8 +5,8 @@ import {
   Habit,
   HabitTag,
   CreateHabitInput,
-  RepeatType,
-  CompletionType,
+  GoalInterval,
+  RecordingType,
   EndConditionType,
   WEEKDAY_NAMES,
 } from "@/types/habit";
@@ -33,6 +33,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   CalendarIcon,
   Plus,
@@ -47,6 +48,8 @@ import {
   ThumbsDown,
   Check,
   Pencil,
+  Hash,
+  Ruler,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -65,13 +68,11 @@ const DEFAULT_FORM_STATE: CreateHabitInput = {
   isGoodHabit: true,
   color: undefined,
   icon: undefined,
-  repeatType: RepeatType.DAILY,
-  repeatWeekDay: 1,
-  repeatMonthDay: 1,
+  recordingType: RecordingType.YES_NO,
+  goalInterval: GoalInterval.DAILY,
+  goalTarget: 1,
   customIntervalDays: 1,
-  customDaysOfWeek: [],
-  completionType: CompletionType.YES_NO,
-  targetOccurrences: 1,
+  scheduledDaysOfWeek: [],
   startDate: normalizeDate(new Date()),
   endConditionType: undefined,
   endConditionValue: undefined,
@@ -133,13 +134,11 @@ function HabitFormContent({
         isGoodHabit: editingHabit.isGoodHabit,
         color: editingHabit.color || undefined,
         icon: editingHabit.icon || undefined,
-        repeatType: editingHabit.repeatType,
-        repeatWeekDay: editingHabit.repeatWeekDay ?? 1,
-        repeatMonthDay: editingHabit.repeatMonthDay ?? 1,
+        recordingType: editingHabit.recordingType,
+        goalInterval: editingHabit.goalInterval,
+        goalTarget: editingHabit.goalTarget ?? 1,
         customIntervalDays: editingHabit.customIntervalDays ?? 1,
-        customDaysOfWeek: editingHabit.customDaysOfWeek || [],
-        completionType: editingHabit.completionType,
-        targetOccurrences: editingHabit.targetOccurrences ?? 1,
+        scheduledDaysOfWeek: editingHabit.scheduledDaysOfWeek || [],
         startDate: editingHabit.startDate.split("T")[0],
         endConditionType: editingHabit.endConditionType || undefined,
         endConditionValue: editingHabit.endConditionValue || undefined,
@@ -173,11 +172,11 @@ function HabitFormContent({
   };
 
   const toggleWeekDay = (day: number) => {
-    const current = formData.customDaysOfWeek || [];
+    const current = formData.scheduledDaysOfWeek || [];
     const updated = current.includes(day)
       ? current.filter((d) => d !== day)
       : [...current, day].sort();
-    updateField("customDaysOfWeek", updated);
+    updateField("scheduledDaysOfWeek", updated);
   };
 
   const toggleTag = (tagId: string) => {
@@ -341,108 +340,67 @@ function HabitFormContent({
       {/* Main Content */}
       <ScrollArea className="max-h-[50vh]">
         <div className="px-6 py-5 space-y-5">
-          {/* Frequency Section */}
+          {/* Recording Type Section */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <Repeat className="w-4 h-4" />
-              Frequency
+              <Pencil className="w-4 h-4" />
+              Track by (daily)
             </div>
             <div className="flex flex-wrap gap-2">
-              {[
-                { value: RepeatType.DAILY, label: "Daily" },
-                { value: RepeatType.WEEKLY, label: "Weekly" },
-                { value: RepeatType.MONTHLY, label: "Monthly" },
-                { value: RepeatType.CUSTOM, label: "Custom" },
-              ].map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => updateField("repeatType", option.value)}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150",
-                    formData.repeatType === option.value
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  updateField("recordingType", RecordingType.YES_NO)
+                }
+                className={cn(
+                  "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                  formData.recordingType === RecordingType.YES_NO
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                <Check className="w-4 h-4 inline mr-1.5" />
+                Done / Not done
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  updateField("recordingType", RecordingType.COUNT)
+                }
+                className={cn(
+                  "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                  formData.recordingType === RecordingType.COUNT
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                <Hash className="w-4 h-4 inline mr-1.5" />
+                Count
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  updateField("recordingType", RecordingType.VALUE)
+                }
+                className={cn(
+                  "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                  formData.recordingType === RecordingType.VALUE
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                <Ruler className="w-4 h-4 inline mr-1.5" />
+                Measurement
+              </button>
             </div>
-
-            {/* Weekly specific options */}
-            {formData.repeatType === RepeatType.WEEKLY && (
-              <div className="pl-0.5 pt-2 space-y-2">
-                <Label className="text-xs text-muted-foreground">
-                  Week starts on
-                </Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {WEEKDAY_NAMES.map((name, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => updateField("repeatWeekDay", index)}
-                      className={cn(
-                        "w-9 h-9 rounded-lg text-xs font-medium transition-colors",
-                        formData.repeatWeekDay === index
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted/50 hover:bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {name.slice(0, 2)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Custom specific options */}
-            {formData.repeatType === RepeatType.CUSTOM && (
-              <div className="pl-0.5 pt-2 space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">
-                    Repeat every
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={1}
-                      className="w-20"
-                      value={formData.customIntervalDays ?? ""}
-                      onChange={(e) =>
-                        updateField(
-                          "customIntervalDays",
-                          e.target.value ? parseInt(e.target.value) : undefined,
-                        )
-                      }
-                    />
-                    <span className="text-sm text-muted-foreground">days</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">
-                    Or specific days
-                  </Label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {WEEKDAY_NAMES.map((name, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => toggleWeekDay(index)}
-                        className={cn(
-                          "w-9 h-9 rounded-lg text-xs font-medium transition-colors",
-                          formData.customDaysOfWeek?.includes(index)
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted/50 hover:bg-muted text-muted-foreground",
-                        )}
-                      >
-                        {name.slice(0, 2)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
+            <p className="text-xs text-muted-foreground pl-0.5">
+              {formData.recordingType === RecordingType.YES_NO &&
+                "Mark as done or not done each day"}
+              {formData.recordingType === RecordingType.COUNT &&
+                "Track how many times (e.g., glasses of water)"}
+              {formData.recordingType === RecordingType.VALUE &&
+                "Log a measurement (e.g., hours of sleep, steps)"}
+            </p>
           </div>
 
           {/* Goal Section */}
@@ -452,39 +410,57 @@ function HabitFormContent({
               Goal
             </div>
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  updateField("completionType", CompletionType.YES_NO)
-                }
-                className={cn(
-                  "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150",
-                  formData.completionType === CompletionType.YES_NO
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                <Check className="w-4 h-4 inline mr-1.5" />
-                Yes / No
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  updateField("completionType", CompletionType.X_OCCURRENCES)
-                }
-                className={cn(
-                  "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150",
-                  formData.completionType === CompletionType.X_OCCURRENCES
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                <Sparkles className="w-4 h-4 inline mr-1.5" />
-                Count
-              </button>
+              {[
+                { value: GoalInterval.DAILY, label: "Daily" },
+                { value: GoalInterval.WEEKLY, label: "Weekly" },
+                { value: GoalInterval.MONTHLY, label: "Monthly" },
+                { value: GoalInterval.CUSTOM, label: "Custom" },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => updateField("goalInterval", option.value)}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                    formData.goalInterval === option.value
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
 
-            {formData.completionType === CompletionType.X_OCCURRENCES && (
+            {/* Custom interval days */}
+            {formData.goalInterval === GoalInterval.CUSTOM && (
+              <div className="pl-0.5 pt-2 space-y-2">
+                <Label className="text-xs text-muted-foreground">
+                  Goal resets every
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    className="w-20"
+                    value={formData.customIntervalDays ?? ""}
+                    onChange={(e) =>
+                      updateField(
+                        "customIntervalDays",
+                        e.target.value ? parseInt(e.target.value) : undefined,
+                      )
+                    }
+                  />
+                  <span className="text-sm text-muted-foreground">days</span>
+                </div>
+              </div>
+            )}
+
+            {/* Goal target - show for all recording types except YES_NO with DAILY interval */}
+            {!(
+              formData.recordingType === RecordingType.YES_NO &&
+              formData.goalInterval === GoalInterval.DAILY
+            ) && (
               <div className="pl-0.5 pt-2 space-y-2">
                 <Label className="text-xs text-muted-foreground">
                   {formData.isGoodHabit
@@ -494,18 +470,78 @@ function HabitFormContent({
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
-                    min={1}
-                    className="w-20"
-                    value={formData.targetOccurrences ?? ""}
+                    min={formData.recordingType === RecordingType.VALUE ? 0 : 1}
+                    step={
+                      formData.recordingType === RecordingType.VALUE ? 0.1 : 1
+                    }
+                    className="w-24"
+                    value={formData.goalTarget ?? ""}
                     onChange={(e) =>
                       updateField(
-                        "targetOccurrences",
-                        e.target.value ? parseInt(e.target.value) : undefined,
+                        "goalTarget",
+                        e.target.value ? parseFloat(e.target.value) : undefined,
                       )
                     }
                   />
-                  <span className="text-sm text-muted-foreground">times</span>
+                  <span className="text-sm text-muted-foreground">
+                    {formData.recordingType === RecordingType.YES_NO && "times"}
+                    {formData.recordingType === RecordingType.COUNT && "times"}
+                    {formData.recordingType === RecordingType.VALUE && "total"}
+                    {" per "}
+                    {formData.goalInterval === GoalInterval.DAILY && "day"}
+                    {formData.goalInterval === GoalInterval.WEEKLY && "week"}
+                    {formData.goalInterval === GoalInterval.MONTHLY && "month"}
+                    {formData.goalInterval === GoalInterval.CUSTOM &&
+                      `${formData.customIntervalDays ?? 1} days`}
+                  </span>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Schedule Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <CalendarDays className="w-4 h-4" />
+              Schedule
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="specific-days"
+                checked={(formData.scheduledDaysOfWeek ?? []).length > 0}
+                onCheckedChange={(checked) => {
+                  if (!checked) {
+                    updateField("scheduledDaysOfWeek", []);
+                  } else {
+                    // Default to weekdays when enabling
+                    updateField("scheduledDaysOfWeek", [1, 2, 3, 4, 5]);
+                  }
+                }}
+              />
+              <label
+                htmlFor="specific-days"
+                className="text-sm text-muted-foreground cursor-pointer"
+              >
+                Only on specific days
+              </label>
+            </div>
+            {(formData.scheduledDaysOfWeek ?? []).length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pl-0.5">
+                {WEEKDAY_NAMES.map((name, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => toggleWeekDay(index)}
+                    className={cn(
+                      "w-9 h-9 rounded-lg text-xs font-medium transition-colors",
+                      formData.scheduledDaysOfWeek?.includes(index)
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted/50 hover:bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {name.slice(0, 2)}
+                  </button>
+                ))}
               </div>
             )}
           </div>

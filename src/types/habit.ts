@@ -1,14 +1,18 @@
 // Enums matching Prisma schema
-export enum RepeatType {
+
+// How progress is recorded each day
+export enum RecordingType {
+  YES_NO = "YES_NO", // Done / Not done (0 or 1)
+  COUNT = "COUNT", // Integer count (0, 1, 2, ...)
+  VALUE = "VALUE", // Decimal measurement (e.g., 7.5 hours)
+}
+
+// Goal reset interval
+export enum GoalInterval {
   DAILY = "DAILY",
   WEEKLY = "WEEKLY",
   MONTHLY = "MONTHLY",
   CUSTOM = "CUSTOM",
-}
-
-export enum CompletionType {
-  YES_NO = "YES_NO",
-  X_OCCURRENCES = "X_OCCURRENCES",
 }
 
 export enum EndConditionType {
@@ -27,16 +31,16 @@ export interface Habit {
   color?: string | null; // Hex color code for the habit
   icon?: string | null; // Lucide icon name
 
-  // Repeat configuration
-  repeatType: RepeatType;
-  repeatWeekDay?: number | null; // 0-6 for Sunday-Saturday (for WEEKLY)
-  repeatMonthDay?: number | null; // 1-31 (for MONTHLY)
-  customIntervalDays?: number | null; // Every X days (for CUSTOM)
-  customDaysOfWeek: number[]; // Array of weekdays 0-6 (for CUSTOM)
+  // Recording type: how progress is logged each day
+  recordingType: RecordingType;
 
-  // Completion configuration
-  completionType: CompletionType;
-  targetOccurrences?: number | null; // Target for X_OCCURRENCES type
+  // Goal configuration: target within an interval
+  goalInterval: GoalInterval;
+  goalTarget?: number | null; // Target count/value for the interval
+  customIntervalDays?: number | null; // Every X days (for CUSTOM interval)
+
+  // Scheduling: which days the habit appears on (empty = every day)
+  scheduledDaysOfWeek: number[]; // Array of weekdays 0-6 (Sun-Sat)
 
   // Date configuration
   startDate: string; // ISO date string
@@ -92,13 +96,11 @@ export interface CreateHabitInput {
   isGoodHabit: boolean;
   color?: string;
   icon?: string;
-  repeatType: RepeatType;
-  repeatWeekDay?: number;
-  repeatMonthDay?: number;
+  recordingType: RecordingType;
+  goalInterval: GoalInterval;
+  goalTarget?: number;
   customIntervalDays?: number;
-  customDaysOfWeek?: number[];
-  completionType: CompletionType;
-  targetOccurrences?: number;
+  scheduledDaysOfWeek?: number[];
   startDate: string;
   endConditionType?: EndConditionType;
   endConditionValue?: string;
