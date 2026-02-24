@@ -13,7 +13,10 @@ interface ProvidersProps {
 
 export function Providers({ children, initialHabitsData }: ProvidersProps) {
   return (
-    <SessionProvider>
+    <SessionProvider
+      refetchInterval={0}
+      refetchOnWindowFocus={false}
+    >
       <ThemeProvider
         attribute="class"
         defaultTheme="system"

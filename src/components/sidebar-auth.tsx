@@ -1,12 +1,13 @@
 "use client";
 
-import { useAuth } from "@/hooks/use-auth";
+import { useHabitsContext } from "@/contexts/habits-context";
+import { signIn, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { LogIn, LogOut, User } from "lucide-react";
 
 export function SidebarAuth() {
-  const { user, isLoading, isAuthenticated, signInWithGoogle, signOut } =
-    useAuth();
+  const { user, isLoaded, isAuthenticated } = useHabitsContext();
+  const isLoading = !isLoaded;
 
   if (isLoading) {
     return (
@@ -45,7 +46,7 @@ export function SidebarAuth() {
           variant="ghost"
           size="sm"
           className="w-full justify-start text-muted-foreground"
-          onClick={() => signOut()}
+          onClick={() => signOut({ callbackUrl: "/" })}
         >
           <LogOut className="w-4 h-4 mr-2" />
           Sign out
@@ -60,7 +61,7 @@ export function SidebarAuth() {
         variant="outline"
         size="sm"
         className="w-full"
-        onClick={() => signInWithGoogle()}
+        onClick={() => signIn("google", { callbackUrl: "/" })}
       >
         <LogIn className="w-4 h-4 mr-2" />
         Sign in to sync

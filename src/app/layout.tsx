@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-import { getServerHabitsData } from "@/lib/server-data";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -48,17 +47,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initialHabitsData = await getServerHabitsData();
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased font-sans">
-        <Providers initialHabitsData={initialHabitsData}>
+        <Providers>
           {/* Grain texture overlay for warmth */}
           <div className="grain-overlay" aria-hidden="true" />
           {children}

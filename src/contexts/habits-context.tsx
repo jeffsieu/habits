@@ -5,18 +5,16 @@ import {
   useHabitsWithAuth,
   HabitsState,
   HabitsActions,
-  InitialData,
 } from "@/hooks/use-habits-with-auth";
 
 const HabitsContext = createContext<(HabitsState & HabitsActions) | null>(null);
 
 interface HabitsProviderProps {
   children: ReactNode;
-  initialData?: InitialData;
 }
 
-export function HabitsProvider({ children, initialData }: HabitsProviderProps) {
-  const habitsState = useHabitsWithAuth(initialData);
+export function HabitsProvider({ children }: HabitsProviderProps) {
+  const habitsState = useHabitsWithAuth();
 
   return (
     <HabitsContext.Provider value={habitsState}>

@@ -4,7 +4,6 @@ import {
   useState,
   useEffect,
   useCallback,
-  useRef,
   useOptimistic,
   startTransition,
 } from "react";
@@ -76,6 +75,7 @@ export interface HabitsState {
   progressEvents: HabitProgressEvent[];
   isLoaded: boolean;
   isAuthenticated: boolean;
+  user: { name?: string | null; email?: string | null; image?: string | null } | null;
   pendingLocalData: PendingLocalData | null;
   isSyncing: boolean;
 }
@@ -116,39 +116,20 @@ interface StoredData {
   progressEvents: HabitProgressEvent[];
 }
 
-export interface InitialData {
-  habits: Habit[];
-  tags: HabitTag[];
-  progressEvents: HabitProgressEvent[];
-  isAuthenticated: boolean;
-}
-
-export function useHabitsWithAuth(
-  initialData?: InitialData,
-): HabitsState & HabitsActions {
-  const { status } = useSession();
+export function useHabitsWithAuth(): HabitsState & HabitsActions {
+  const { data: session, status } = useSession();
   const isAuthenticated = status === "authenticated";
   const isAuthLoading = status === "loading";
 
-  // Use initialData if provided and authenticated via SSR
-  const hasValidInitialData = Boolean(
-    initialData?.isAuthenticated && initialData.habits !== undefined,
-  );
-
   const [data, setData] = useState<StoredData>({
-    habits: hasValidInitialData && initialData ? initialData.habits : [],
-    tags: hasValidInitialData && initialData ? initialData.tags : [],
-    progressEvents:
-      hasValidInitialData && initialData ? initialData.progressEvents : [],
+    habits: [],
+    tags: [],
+    progressEvents: [],
   });
-  // Always start with isLoaded false, only set true after data is fetched
   const [isLoaded, setIsLoaded] = useState(false);
   const [pendingLocalData, setPendingLocalData] =
     useState<PendingLocalData | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
-  const lastAuthState = useRef<boolean | null>(
-    hasValidInitialData ? true : null,
-  );
 
   const { habits, tags, progressEvents } = data;
 
@@ -775,6 +756,7 @@ export function useHabitsWithAuth(
     progressEvents: optimisticProgress,
     isLoaded,
     isAuthenticated,
+    user: session?.user ?? null,
     pendingLocalData,
     isSyncing,
     syncLocalData,

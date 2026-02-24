@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { useHabitsContext } from "@/contexts/habits-context";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileSidebarTrigger } from "@/components/app-sidebar";
@@ -18,8 +18,10 @@ function AppLayoutContent({ children }: AppLayoutProps) {
   const [hideLoader, setHideLoader] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
+  // Client-only mounting to prevent hydration mismatch with Radix UI components
   useEffect(() => {
-    setIsMounted(true);
+    const timer = setTimeout(() => setIsMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleAddTag = (name: string, color?: string) => {
@@ -42,46 +44,41 @@ function AppLayoutContent({ children }: AppLayoutProps) {
     }
   }, [isLoaded]);
 
-  if (!isMounted) {
-    return null;
-  }
+  // Show loading screen while data loads
+  const showLoading = !isLoaded || !hideLoader || !quote;
 
   return (
     <div className="relative min-h-screen">
-      {/* Main content - always rendered */}
-      <div className="flex min-h-screen bg-background">
-        {/* Sidebar - Desktop only */}
-        <AppSidebar
-          habits={habits}
-          tags={tags}
-          progressEvents={progressEvents}
-          onAddTag={handleAddTag}
-          onUpdateTag={handleUpdateTag}
-        />
-
-        {/* Main content area */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Top bar */}
-          <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40 lg:hidden">
-            <div className="flex items-center gap-2">
-              <MobileSidebarTrigger
-                habits={habits}
-                tags={tags}
-                progressEvents={progressEvents}
-                onAddTag={handleAddTag}
-                onUpdateTag={handleUpdateTag}
-              />
-            </div>
-            <div className="flex-1" />
-          </header>
-
-          {/* Page content */}
-          <main className="flex-1">{children}</main>
+      {/* Main content - only render interactive components after mount */}
+      {isMounted && (
+        <div className={`flex min-h-screen bg-background ${showLoading ? "opacity-0" : "opacity-100"} transition-opacity duration-300`}>
+          <AppSidebar
+            habits={habits}
+            tags={tags}
+            progressEvents={progressEvents}
+            onAddTag={handleAddTag}
+            onUpdateTag={handleUpdateTag}
+          />
+          <div className="flex-1 flex flex-col min-w-0">
+            <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40 lg:hidden">
+              <div className="flex items-center gap-2">
+                <MobileSidebarTrigger
+                  habits={habits}
+                  tags={tags}
+                  progressEvents={progressEvents}
+                  onAddTag={handleAddTag}
+                  onUpdateTag={handleUpdateTag}
+                />
+              </div>
+              <div className="flex-1" />
+            </header>
+            <main className="flex-1">{children}</main>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Loading overlay - fades out */}
-      {!hideLoader && quote && (
+      {/* Loading overlay */}
+      {showLoading && quote && (
         <div
           className={`fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-background/60 px-6 transition-opacity duration-300 ${
             isLoaded ? "opacity-0" : "opacity-100"
