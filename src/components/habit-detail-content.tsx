@@ -130,23 +130,6 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
     return intervalDesc;
   };
 
-  const getCompletionDescription = () => {
-    const target = habit.goalTarget ?? 1;
-    if (habit.recordingType === RecordingType.YES_NO) {
-      if (habit.goalInterval === GoalInterval.DAILY) {
-        return "Yes/No completion";
-      }
-      return `${target} times to complete`;
-    }
-    if (habit.recordingType === RecordingType.COUNT) {
-      return `${target} times to complete`;
-    }
-    if (habit.recordingType === RecordingType.VALUE) {
-      return `Target: ${target}`;
-    }
-    return "Unknown";
-  };
-
   const streakProgress =
     bestStreak > 0 ? (currentStreak / bestStreak) * 100 : 0;
 
@@ -536,7 +519,7 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                   handleLogProgressForDate(isSelectedDateComplete ? 0 : 1)
                 }
                 className={cn(
-                  "gap-2 min-w-[140px]",
+                  "gap-2 min-w-35",
                   isSelectedDateComplete &&
                     "bg-success hover:bg-success/90 text-success-foreground",
                 )}

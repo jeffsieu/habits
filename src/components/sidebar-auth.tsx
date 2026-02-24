@@ -4,6 +4,7 @@ import { useHabitsContext } from "@/contexts/habits-context";
 import { signIn, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { LogIn, LogOut, User } from "lucide-react";
+import Image from "next/image";
 
 export function SidebarAuth() {
   const { user, isLoaded, isAuthenticated } = useHabitsContext();
@@ -22,8 +23,10 @@ export function SidebarAuth() {
       <div>
         <div className="flex items-center gap-3 mb-3">
           {user.image ? (
-            <img
+            <Image
               src={user.image}
+              width={32}
+              height={32}
               alt={user.name || "User"}
               className="w-8 h-8 rounded-full"
               referrerPolicy="no-referrer"

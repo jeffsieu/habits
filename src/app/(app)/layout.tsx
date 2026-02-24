@@ -51,7 +51,9 @@ function AppLayoutContent({ children }: AppLayoutProps) {
     <div className="relative min-h-screen">
       {/* Main content - only render interactive components after mount */}
       {isMounted && (
-        <div className={`flex min-h-screen bg-background ${showLoading ? "opacity-0" : "opacity-100"} transition-opacity duration-300`}>
+        <div
+          className={`flex min-h-screen bg-background ${showLoading ? "opacity-0" : "opacity-100"} transition-opacity duration-300`}
+        >
           <AppSidebar
             habits={habits}
             tags={tags}

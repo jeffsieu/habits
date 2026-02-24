@@ -75,7 +75,11 @@ export interface HabitsState {
   progressEvents: HabitProgressEvent[];
   isLoaded: boolean;
   isAuthenticated: boolean;
-  user: { name?: string | null; email?: string | null; image?: string | null } | null;
+  user: {
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  } | null;
   pendingLocalData: PendingLocalData | null;
   isSyncing: boolean;
 }
