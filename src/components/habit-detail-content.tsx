@@ -542,16 +542,12 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
 
                 {habit.recordingType === RecordingType.YES_NO ? (
                   <Button
-                    variant={isSelectedDateComplete ? "default" : "outline"}
+                    variant={isSelectedDateComplete ? "outline" : "default"}
                     size="default"
                     onClick={() =>
                       handleLogProgressForDate(isSelectedDateComplete ? 0 : 1)
                     }
-                    className={cn(
-                      "gap-2",
-                      isSelectedDateComplete &&
-                        "bg-primary hover:bg-primary/90 text-primary-foreground",
-                    )}
+                    className={cn("gap-2")}
                   >
                     <Check className="w-4 h-4" />
                     {isSelectedDateComplete ? "Done" : "Mark Complete"}
@@ -642,16 +638,12 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
 
             {habit.recordingType === RecordingType.YES_NO ? (
               <Button
-                variant={isSelectedDateComplete ? "default" : "outline"}
+                variant={isSelectedDateComplete ? "outline" : "default"}
                 size="lg"
                 onClick={() =>
                   handleLogProgressForDate(isSelectedDateComplete ? 0 : 1)
                 }
-                className={cn(
-                  "gap-2 min-w-35",
-                  isSelectedDateComplete &&
-                    "bg-success hover:bg-success/90 text-success-foreground",
-                )}
+                className={cn("gap-2 min-w-35")}
               >
                 <Check className="w-5 h-5" />
                 {isSelectedDateComplete ? "Done" : "Mark Complete"}
