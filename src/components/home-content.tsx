@@ -53,7 +53,7 @@ export function HomeContent() {
     <div className="h-full flex flex-col">
       {/* Mobile List View */}
       <div className="flex-1 md:hidden">
-        <div className="bg-card border-b border-border">
+        <div className="h-full">
           <HabitListView
             habits={habits}
             tags={tags}

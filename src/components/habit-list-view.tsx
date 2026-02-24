@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useRef, useEffect, useCallback } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Habit,
@@ -12,14 +12,14 @@ import {
   normalizeDate,
   isHabitScheduledForDate,
   getProgressValueOnDate,
-  addDays,
 } from "@/lib/habit-utils";
 import { HabitIconDisplay } from "@/lib/habit-icons";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, ChevronDown, Loader2, Edit3 } from "lucide-react";
+import { Plus, Minus, Edit3 } from "lucide-react";
 import { ValueInputDialog } from "@/components/value-input-dialog";
+import { HorizontalDatePicker } from "@/components/horizontal-date-picker";
 
 interface HabitListViewProps {
   habits: Habit[];
@@ -29,73 +29,101 @@ interface HabitListViewProps {
   onAddHabit: () => void;
 }
 
-const INITIAL_DAYS = 1; // Today only
-const LOAD_MORE_BATCH = 7; // Load a week at a time
+export function HabitListView({
+  habits,
+  progressEvents,
+  onLogProgress,
+  onAddHabit,
+}: HabitListViewProps) {
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
-interface DayGroup {
-  date: Date;
-  dateStr: string;
-  label: string;
-  habits: Habit[];
-}
+  const dateStr = useMemo(() => normalizeDate(selectedDate), [selectedDate]);
 
-function formatDayLabel(date: Date, today: Date): string {
-  const todayStr = normalizeDate(today);
-  const dateStr = normalizeDate(date);
-  const yesterday = addDays(today, -1);
-  const yesterdayStr = normalizeDate(yesterday);
-
-  if (dateStr === todayStr) {
-    return "Today";
-  } else if (dateStr === yesterdayStr) {
-    return "Yesterday";
-  } else {
-    // Format as "Wed, Feb 26"
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-  }
-}
-
-function getDayGroups(
-  habits: Habit[],
-  today: Date,
-  daysToShow: number,
-  progressEvents: HabitProgressEvent[],
-): DayGroup[] {
-  const groups: DayGroup[] = [];
-
-  // Start from today and go backwards
-  for (let i = 0; i < daysToShow; i++) {
-    const date = addDays(today, -i);
-    const dateStr = normalizeDate(date);
-    const scheduledHabits = habits.filter((habit) =>
-      isHabitScheduledForDate(habit, date),
+  // Get habits scheduled for selected date
+  const scheduledHabits = useMemo(() => {
+    const filtered = habits.filter((habit) =>
+      isHabitScheduledForDate(habit, selectedDate),
     );
 
-    if (scheduledHabits.length > 0) {
-      // Sort habits: incomplete first, completed at bottom
-      const sortedHabits = [...scheduledHabits].sort((a, b) => {
-        const aProgress = getProgressValueOnDate(progressEvents, a.id, dateStr);
-        const bProgress = getProgressValueOnDate(progressEvents, b.id, dateStr);
-        const aCompleted = aProgress > 0;
-        const bCompleted = bProgress > 0;
-        if (aCompleted === bCompleted) return 0;
-        return aCompleted ? 1 : -1;
-      });
+    // Sort habits: incomplete first, completed at bottom
+    return filtered.sort((a, b) => {
+      const aProgress = getProgressValueOnDate(progressEvents, a.id, dateStr);
+      const bProgress = getProgressValueOnDate(progressEvents, b.id, dateStr);
+      const aCompleted = aProgress > 0;
+      const bCompleted = bProgress > 0;
+      if (aCompleted === bCompleted) return 0;
+      return aCompleted ? 1 : -1;
+    });
+  }, [habits, selectedDate, progressEvents, dateStr]);
 
-      groups.push({
-        date,
-        dateStr,
-        label: formatDayLabel(date, today),
-        habits: sortedHabits,
-      });
-    }
+  if (habits.length === 0) {
+    return (
+      <div className="flex flex-col h-full">
+        <HorizontalDatePicker
+          selectedDate={selectedDate}
+          onDateSelect={setSelectedDate}
+        />
+        <div className="flex flex-col items-center justify-center py-16 px-4">
+          <p className="text-muted-foreground text-center mb-4">
+            No habits yet. Create your first habit to get started!
+          </p>
+          <Button onClick={onAddHabit}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Habit
+          </Button>
+        </div>
+      </div>
+    );
   }
 
-  return groups;
+  return (
+    <div className="flex flex-col h-full">
+      {/* Horizontal Date Picker */}
+      <HorizontalDatePicker
+        selectedDate={selectedDate}
+        onDateSelect={setSelectedDate}
+      />
+
+      {/* Habits List */}
+      <div className="flex-1 overflow-y-auto">
+        {scheduledHabits.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4">
+            <p className="text-muted-foreground text-center">
+              No habits scheduled for this day.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {scheduledHabits.map((habit, index) => (
+              <div
+                key={`${habit.id}-${dateStr}`}
+                className="opacity-0 animate-slide-up"
+                style={{
+                  animationDelay: `${index * 50}ms`,
+                  animationFillMode: "both",
+                }}
+              >
+                <HabitListItem
+                  habit={habit}
+                  dateStr={dateStr}
+                  progressEvents={progressEvents}
+                  onLogProgress={onLogProgress}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add Habit Button */}
+        <div className="p-4">
+          <Button variant="outline" className="w-full" onClick={onAddHabit}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Habit
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 interface HabitListItemProps {
@@ -149,8 +177,8 @@ function HabitListItem({
     <Link
       href={`/habits/${habit.id}`}
       className={cn(
-        "flex items-center justify-between px-4 py-3 border-b border-border/50 last:border-b-0",
-        "hover:bg-muted/30 active:bg-muted/50 transition-colors",
+        "flex items-center justify-between px-4 py-3 bg-card",
+        "hover:bg-accent/50 active:bg-accent/70 transition-colors",
       )}
     >
       {/* Left side: Icon + Name */}
@@ -229,227 +257,5 @@ function HabitListItem({
         )}
       </div>
     </Link>
-  );
-}
-
-function DayGroupComponent({
-  group,
-  progressEvents,
-  onLogProgress,
-}: {
-  group: DayGroup;
-  progressEvents: HabitProgressEvent[];
-  onLogProgress: (habitId: string, date: string, value: number) => void;
-}) {
-  return (
-    <div>
-      {/* Day Header */}
-      <div className="px-4 py-2 bg-muted/50 sticky top-0 z-10">
-        <h3 className="text-sm font-semibold text-muted-foreground">
-          {group.label}
-        </h3>
-      </div>
-
-      {/* Habits for this day */}
-      <div>
-        {group.habits.map((habit) => (
-          <HabitListItem
-            key={`${habit.id}-${group.dateStr}`}
-            habit={habit}
-            dateStr={group.dateStr}
-            progressEvents={progressEvents}
-            onLogProgress={onLogProgress}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export function HabitListView({
-  habits,
-  progressEvents,
-  onLogProgress,
-  onAddHabit,
-}: HabitListViewProps) {
-  const today = useMemo(() => new Date(), []);
-  const [daysToShow, setDaysToShow] = useState(INITIAL_DAYS);
-  const [showOlder, setShowOlder] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-
-  // Find the earliest habit start date to know when to stop loading
-  const earliestStartDate = useMemo(() => {
-    if (habits.length === 0) return null;
-    const dates = habits.map((h) => new Date(h.startDate.split("T")[0]));
-    return new Date(Math.min(...dates.map((d) => d.getTime())));
-  }, [habits]);
-
-  // Get all day groups up to daysToShow
-  const allDayGroups = useMemo(
-    () => getDayGroups(habits, today, daysToShow, progressEvents),
-    [habits, today, daysToShow, progressEvents],
-  );
-
-  // Split into initial (today + yesterday) and older groups
-  const initialGroups = useMemo(() => {
-    return getDayGroups(habits, today, INITIAL_DAYS, progressEvents);
-  }, [habits, today, progressEvents]);
-
-  const olderGroups = useMemo(() => {
-    if (!showOlder) return [];
-    return allDayGroups.slice(INITIAL_DAYS);
-  }, [allDayGroups, showOlder]);
-
-  // Compute if we have more days to load
-  const hasMoreDays = useMemo(() => {
-    if (!showOlder) return true;
-    if (!earliestStartDate) return false;
-
-    // Check if we've passed the earliest start date
-    const oldestLoadedDate = addDays(today, -(daysToShow - 1));
-    if (oldestLoadedDate < earliestStartDate) {
-      return false;
-    }
-
-    return true;
-  }, [showOlder, daysToShow, earliestStartDate, today]);
-
-  // Load more days when scrolling
-  const loadMoreDays = useCallback(() => {
-    if (!hasMoreDays || isLoading) return;
-
-    setIsLoading(true);
-    // Small delay for smoother UX
-    setTimeout(() => {
-      setDaysToShow((prev) => prev + LOAD_MORE_BATCH);
-      setIsLoading(false);
-    }, 100);
-  }, [hasMoreDays, isLoading]);
-
-  // Intersection Observer for infinite scroll
-  useEffect(() => {
-    if (!showOlder || !hasMoreDays) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting && !isLoading && hasMoreDays) {
-          loadMoreDays();
-        }
-      },
-      {
-        root: null,
-        rootMargin: "100px",
-        threshold: 0,
-      },
-    );
-
-    const currentRef = loadMoreRef.current;
-    if (currentRef) {
-      observer.observe(currentRef);
-    }
-
-    return () => {
-      if (currentRef) {
-        observer.unobserve(currentRef);
-      }
-    };
-  }, [showOlder, isLoading, loadMoreDays, hasMoreDays]);
-
-  const handleShowOlder = () => {
-    setShowOlder(true);
-    setDaysToShow(INITIAL_DAYS + LOAD_MORE_BATCH);
-  };
-
-  if (habits.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 px-4">
-        <p className="text-muted-foreground text-center mb-4">
-          No habits yet. Create your first habit to get started!
-        </p>
-        <Button onClick={onAddHabit}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Habit
-        </Button>
-      </div>
-    );
-  }
-
-  if (initialGroups.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 px-4">
-        <p className="text-muted-foreground text-center">
-          No habits scheduled for today or yesterday.
-        </p>
-        <Button onClick={onAddHabit} className="mt-4">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Habit
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="divide-y divide-border">
-      {/* Today and Yesterday */}
-      {initialGroups.map((group) => (
-        <DayGroupComponent
-          key={group.dateStr}
-          group={group}
-          progressEvents={progressEvents}
-          onLogProgress={onLogProgress}
-        />
-      ))}
-
-      {/* Show Older Button or Older Days */}
-      {!showOlder ? (
-        <div className="p-4 flex justify-center">
-          <Button
-            variant="ghost"
-            onClick={handleShowOlder}
-            className="text-muted-foreground"
-          >
-            <ChevronDown className="w-4 h-4 mr-2" />
-            Show older
-          </Button>
-        </div>
-      ) : (
-        <>
-          {/* Older day groups */}
-          {olderGroups.map((group) => (
-            <DayGroupComponent
-              key={group.dateStr}
-              group={group}
-              progressEvents={progressEvents}
-              onLogProgress={onLogProgress}
-            />
-          ))}
-
-          {/* Infinite scroll loader - only show if there are more days to load */}
-          {hasMoreDays ? (
-            <div ref={loadMoreRef} className="p-4 flex justify-center">
-              {isLoading && (
-                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-              )}
-            </div>
-          ) : (
-            <div className="p-4 flex justify-center">
-              <span className="text-sm text-muted-foreground">
-                Nothing more to show
-              </span>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Add Habit Button */}
-      <div className="p-4">
-        <Button variant="outline" className="w-full" onClick={onAddHabit}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Habit
-        </Button>
-      </div>
-    </div>
   );
 }

@@ -427,7 +427,7 @@ export function AppSidebar({
   };
 
   return (
-    <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r lg:border-border lg:bg-card">
+    <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:h-screen lg:border-r lg:border-border lg:bg-card lg:sticky lg:top-0">
       <SidebarContent
         habits={habits}
         tags={tags}

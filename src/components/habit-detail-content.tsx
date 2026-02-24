@@ -13,20 +13,19 @@ import {
   formatDate,
   calculateCurrentStreak,
   calculateBestStreak,
-  calculateTotalCompletedDays,
   calculateTotalValue,
   normalizeDate,
   isHabitCompleteOnDate,
   isStreakSecure,
+  isHabitScheduledForDate,
+  getProgressValueOnDate,
 } from "@/lib/habit-utils";
 import { HabitIconDisplay } from "@/lib/habit-icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ProgressRing } from "@/components/ui/progress-ring";
 import {
   Flame,
-  Trophy,
   CalendarDays,
   Target,
   Pencil,
@@ -35,10 +34,9 @@ import {
   Check,
   Plus,
   Minus,
-  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, ViewTransition } from "react";
 
 interface HabitDetailContentProps {
   habitId: string;
@@ -68,7 +66,6 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
 
   const currentStreak = calculateCurrentStreak(habit, progressEvents);
   const bestStreak = calculateBestStreak(habit, progressEvents);
-  const totalCompletedDays = calculateTotalCompletedDays(habit, progressEvents);
   const totalValue = calculateTotalValue(habit, progressEvents);
   const habitTags = tags.filter((t) => habit.tagIds.includes(t.id));
 
@@ -136,7 +133,7 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
   return (
     <div className="h-full pb-28 lg:pb-6">
       {/* Hero Header */}
-      <header className="relative overflow-hidden">
+      <header className="relative overflow-visible -mt-16 pt-16 lg:mt-0 lg:pt-0">
         {/* Background gradient */}
         <div
           className="absolute inset-0 opacity-20"
@@ -153,7 +150,7 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
             onClick={() => setIsFormOpen(true)}
             variant="ghost"
             size="icon"
-            className="absolute top-4 right-4 lg:top-6 lg:right-6 h-9 w-9 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 hover:bg-card"
+            className="absolute top-4 right-4 lg:top-6 lg:right-6 h-9 w-9 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 hover:bg-card z-10"
           >
             <Pencil className="w-4 h-4" />
           </Button>
@@ -168,17 +165,22 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                   backgroundColor: habit.color || "var(--primary)",
                 }}
               />
-              <div
-                className="relative w-20 h-20 rounded-2xl flex items-center justify-center"
-                style={{
-                  backgroundColor: habit.color
-                    ? `${habit.color}20`
-                    : "var(--primary)/10",
-                  color: habit.color || "var(--primary)",
-                }}
-              >
-                <HabitIconDisplay iconName={habit.icon} className="w-10 h-10" />
-              </div>
+              <ViewTransition name={`habit-icon-${habitId}`}>
+                <div
+                  className="relative w-20 h-20 rounded-2xl flex items-center justify-center"
+                  style={{
+                    backgroundColor: habit.color
+                      ? `${habit.color}20`
+                      : "var(--primary)/10",
+                    color: habit.color || "var(--primary)",
+                  }}
+                >
+                  <HabitIconDisplay
+                    iconName={habit.icon}
+                    className="w-10 h-10"
+                  />
+                </div>
+              </ViewTransition>
             </div>
 
             {/* Habit name */}
@@ -243,6 +245,7 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                   backgroundColor: habit.color || "var(--primary)",
                 }}
               />
+              {/* Avoid duplicate ViewTransition names by leaving the desktop icon unwrapped */}
               <div
                 className="relative w-16 h-16 rounded-xl flex items-center justify-center"
                 style={{
@@ -310,68 +313,191 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
           {/* Left Column - Stats */}
           <div className="lg:col-span-5 space-y-6">
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* Current Streak with Progress Ring */}
-              <div className="col-span-2 bg-card rounded-2xl border border-border p-5 flex items-center gap-5 transition-all duration-200 hover:shadow-lg hover:shadow-primary/5">
-                <ProgressRing
-                  value={currentStreak}
-                  max={Math.max(bestStreak, 1)}
-                  size={80}
-                  strokeWidth={6}
-                  className={cn(
-                    isStreakSecure(habit, progressEvents)
-                      ? "text-warning"
-                      : "text-primary",
-                  )}
-                >
-                  <Flame
-                    className={cn(
-                      "w-5 h-5",
-                      isStreakSecure(habit, progressEvents) && "animate-pulse",
-                    )}
-                  />
-                </ProgressRing>
-                <div className="flex-1">
-                  <span className="text-4xl font-display font-bold">
-                    {currentStreak}
-                  </span>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    day streak
-                    {bestStreak > 0 && currentStreak > 0 && (
-                      <span className="text-xs ml-1">
-                        ({Math.round(streakProgress)}% of best)
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
+            <div className="space-y-3">
+              {/* Current Streak with Week View */}
+              <div className="relative overflow-hidden bg-card rounded-3xl border border-border/50 p-6">
+                <div className="relative">
+                  {/* Header with progress ring */}
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex items-center gap-5">
+                      {/* Simple flame icon with glow */}
+                      <div className="relative flex items-center justify-center w-20 h-20">
+                        <div
+                          className={cn(
+                            "absolute inset-0 blur-2xl opacity-40 scale-125 transition-all duration-300",
+                            isStreakSecure(habit, progressEvents)
+                              ? "opacity-60"
+                              : "opacity-40",
+                          )}
+                          style={{
+                            backgroundColor: isStreakSecure(
+                              habit,
+                              progressEvents,
+                            )
+                              ? "var(--warning)"
+                              : habit.color || "var(--primary)",
+                          }}
+                        />
+                        <Flame
+                          fill="currentColor"
+                          className={cn(
+                            "relative w-12 h-12 transition-all duration-300",
+                            isStreakSecure(habit, progressEvents)
+                              ? "text-orange-500 drop-shadow-[0_0_12px_rgba(249,115,22,0.5)]"
+                              : "text-primary drop-shadow-[0_0_8px_rgba(var(--primary),0.5)]",
+                          )}
+                          style={{
+                            color:
+                              !isStreakSecure(habit, progressEvents) &&
+                              habit.color
+                                ? habit.color
+                                : isStreakSecure(habit, progressEvents)
+                                  ? "#f97316"
+                                  : undefined,
+                          }}
+                        />
+                      </div>
 
-              {/* Best Streak */}
-              <div className="bg-card rounded-2xl border border-border p-4 transition-all duration-200 hover:shadow-lg hover:shadow-primary/5">
-                <div className="flex items-center gap-2 text-primary mb-2">
-                  <Trophy className="w-4 h-4" />
-                  <span className="text-xs uppercase tracking-wider font-medium">
-                    Best
-                  </span>
-                </div>
-                <span className="text-2xl font-display font-bold">
-                  {bestStreak}
-                </span>
-                <p className="text-xs text-muted-foreground mt-1">day streak</p>
-              </div>
+                      {/* Streak number and text */}
+                      <div className="flex-1">
+                        <div className="flex items-baseline gap-2 mb-1">
+                          <span className="text-5xl font-display font-bold tracking-tight text-foreground">
+                            {currentStreak}
+                          </span>
+                          <span className="text-lg text-muted-foreground font-medium">
+                            {currentStreak === 1 ? "day" : "days"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                            Current Streak
+                          </p>
+                          {bestStreak > 0 && currentStreak > 0 && (
+                            <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-primary/10 text-primary border border-primary/20">
+                              {Math.round(streakProgress)}% of best
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Days Completed */}
-              <div className="bg-card rounded-2xl border border-border p-4 transition-all duration-200 hover:shadow-lg hover:shadow-primary/5">
-                <div className="flex items-center gap-2 text-success mb-2">
-                  <Sparkles className="w-4 h-4" />
-                  <span className="text-xs uppercase tracking-wider font-medium">
-                    Completed
-                  </span>
+                  {/* Week view */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        This Week
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {(() => {
+                          const today = new Date();
+                          const completed = [];
+                          for (let i = 6; i >= 0; i--) {
+                            const date = new Date(today);
+                            date.setDate(today.getDate() - i);
+                            const dateStr = normalizeDate(date);
+                            const isScheduled = isHabitScheduledForDate(
+                              habit,
+                              date,
+                            );
+                            const value = getProgressValueOnDate(
+                              progressEvents,
+                              habit.id,
+                              dateStr,
+                            );
+                            if (isScheduled && value > 0) completed.push(date);
+                          }
+                          return `${completed.length}/7 completed`;
+                        })()}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-2.5">
+                      {(() => {
+                        const today = new Date();
+                        const weekDays = [];
+                        for (let i = 6; i >= 0; i--) {
+                          const date = new Date(today);
+                          date.setDate(today.getDate() - i);
+                          const dateStr = normalizeDate(date);
+                          const isScheduled = isHabitScheduledForDate(
+                            habit,
+                            date,
+                          );
+                          const value = getProgressValueOnDate(
+                            progressEvents,
+                            habit.id,
+                            dateStr,
+                          );
+                          const isComplete = value > 0;
+                          const isToday =
+                            normalizeDate(date) === normalizeDate(today);
+
+                          weekDays.push(
+                            <div
+                              key={dateStr}
+                              className="flex flex-col items-center gap-2"
+                            >
+                              <span
+                                className={cn(
+                                  "text-xs font-bold uppercase transition-colors",
+                                  isToday
+                                    ? "text-primary"
+                                    : "text-muted-foreground/60",
+                                )}
+                              >
+                                {date
+                                  .toLocaleDateString("en-US", {
+                                    weekday: "short",
+                                  })
+                                  .charAt(0)}
+                              </span>
+                              <div className="relative w-full">
+                                {/* Glow effect for completed days */}
+                                {isComplete && (
+                                  <div
+                                    className="absolute inset-0 rounded-xl blur-md opacity-40"
+                                    style={{
+                                      backgroundColor:
+                                        habit.color || "var(--primary)",
+                                    }}
+                                  />
+                                )}
+                                <div
+                                  className={cn(
+                                    "relative w-full aspect-square rounded-xl transition-all duration-300 border-2",
+                                    isToday &&
+                                      "ring-2 ring-offset-2 ring-offset-background scale-105",
+                                    !isScheduled &&
+                                      "bg-muted/20 border-muted/30",
+                                    isScheduled &&
+                                      !isComplete &&
+                                      "bg-muted/40 border-muted/50",
+                                    isScheduled &&
+                                      isComplete &&
+                                      "shadow-[0_4px_12px_var(--primary)_40] shadow-primary/40 bg-primary border-primary",
+                                    isToday &&
+                                      isScheduled &&
+                                      !isComplete &&
+                                      "border-primary",
+                                  )}
+                                >
+                                  {/* Checkmark for completed days */}
+                                  {isComplete && (
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                      <Check className="w-4 h-4 text-white font-bold drop-shadow" />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>,
+                          );
+                        }
+                        return weekDays;
+                      })()}
+                    </div>
+                  </div>
                 </div>
-                <span className="text-2xl font-display font-bold">
-                  {totalCompletedDays}
-                </span>
-                <p className="text-xs text-muted-foreground mt-1">days total</p>
               </div>
 
               {/* Total Value (for count/value habits) */}
@@ -400,7 +526,7 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
               <div className="flex items-center justify-between gap-4">
                 <p className="text-sm text-muted-foreground">
                   {isSelectedDateComplete ? (
-                    <span className="text-success flex items-center gap-1">
+                    <span className="text-primary flex items-center gap-1">
                       <Check className="w-3.5 h-3.5" />
                       Completed
                     </span>
@@ -424,7 +550,7 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                     className={cn(
                       "gap-2",
                       isSelectedDateComplete &&
-                        "bg-success hover:bg-success/90 text-success-foreground",
+                        "bg-primary hover:bg-primary/90 text-primary-foreground",
                     )}
                   >
                     <Check className="w-4 h-4" />
@@ -487,8 +613,11 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
       </div>
 
       {/* Floating Quick-Log Panel - Mobile only */}
-      <div className="fixed bottom-0 left-0 right-0 lg:hidden z-50">
-        <div className="bg-card/95 backdrop-blur-md border-t border-border p-4 shadow-lg shadow-background/80">
+      <div
+        className="fixed left-0 right-0 lg:hidden z-10 bottom-16"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div className="m-2 rounded bg-card/95 backdrop-blur-md border-t border-border p-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold truncate">

@@ -231,7 +231,7 @@ function DayCell({
       {showStreakBg && (
         <div
           className={cn(
-            "absolute inset-y-1 inset-x-0 bg-success/15",
+            "absolute inset-y-1 inset-x-0 bg-primary/15",
             streakRoundedLeft && "rounded-l-full ml-1",
             streakRoundedRight && "rounded-r-full mr-1",
           )}

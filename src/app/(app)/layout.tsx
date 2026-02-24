@@ -3,7 +3,8 @@
 import { ReactNode, useState, useEffect } from "react";
 import { useHabitsContext } from "@/contexts/habits-context";
 import { AppSidebar } from "@/components/app-sidebar";
-import { MobileSidebarTrigger } from "@/components/app-sidebar";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { MobileAppBar } from "@/components/mobile-app-bar";
 import { useRandomQuote } from "@/hooks/use-random-quote";
 import { Sparkles } from "lucide-react";
 
@@ -54,28 +55,30 @@ function AppLayoutContent({ children }: AppLayoutProps) {
         <div
           className={`flex min-h-screen bg-background ${showLoading ? "opacity-0" : "opacity-100"} transition-opacity duration-300`}
         >
-          <AppSidebar
-            habits={habits}
-            tags={tags}
-            progressEvents={progressEvents}
-            onAddTag={handleAddTag}
-            onUpdateTag={handleUpdateTag}
-          />
-          <div className="flex-1 flex flex-col min-w-0">
-            <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40 lg:hidden">
-              <div className="flex items-center gap-2">
-                <MobileSidebarTrigger
-                  habits={habits}
-                  tags={tags}
-                  progressEvents={progressEvents}
-                  onAddTag={handleAddTag}
-                  onUpdateTag={handleUpdateTag}
-                />
-              </div>
-              <div className="flex-1" />
-            </header>
-            <main className="flex-1">{children}</main>
+          {/* Sidebar - Desktop only */}
+          <div className="hidden lg:block">
+            <AppSidebar
+              habits={habits}
+              tags={tags}
+              progressEvents={progressEvents}
+              onAddTag={handleAddTag}
+              onUpdateTag={handleUpdateTag}
+            />
           </div>
+
+          {/* Main content area */}
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Mobile app bar */}
+            <MobileAppBar />
+
+            {/* Page content with top padding for fixed app bar on mobile, bottom padding for mobile nav */}
+            <main className="flex-1 pt-16 pb-16 lg:pt-0 lg:pb-0">
+              {children}
+            </main>
+          </div>
+
+          {/* Mobile bottom navigation */}
+          <MobileBottomNav />
         </div>
       )}
 
