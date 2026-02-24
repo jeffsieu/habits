@@ -141,8 +141,8 @@ export function useHabitsWithAuth(
     progressEvents:
       hasValidInitialData && initialData ? initialData.progressEvents : [],
   });
-  // If we have valid initial data from SSR, we're already loaded
-  const [isLoaded, setIsLoaded] = useState(hasValidInitialData);
+  // Always start with isLoaded false, only set true after data is fetched
+  const [isLoaded, setIsLoaded] = useState(false);
   const [pendingLocalData, setPendingLocalData] =
     useState<PendingLocalData | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -282,7 +282,11 @@ export function useHabitsWithAuth(
 
   // Load data based on auth state
   useEffect(() => {
-    if (isAuthLoading) return;
+    // Always show loading until data is ready
+    if (isAuthLoading) {
+      setIsLoaded(false);
+      return;
+    }
 
     const loadData = async () => {
       if (isAuthenticated) {
@@ -350,12 +354,9 @@ export function useHabitsWithAuth(
       setIsLoaded(true);
     };
 
-    // Only reload if auth state actually changed
-    if (lastAuthState.current !== isAuthenticated) {
-      lastAuthState.current = isAuthenticated;
-      setIsLoaded(false);
-      loadData();
-    }
+    // Always load data on mount and when auth state changes
+    setIsLoaded(false);
+    loadData();
   }, [isAuthenticated, isAuthLoading]);
 
   // Persist to localStorage when not authenticated
