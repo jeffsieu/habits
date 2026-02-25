@@ -15,6 +15,8 @@ export function MobileAppBar() {
       return { title: "Home", showBack: false };
     } else if (pathname === "/habits") {
       return { title: "Habits", showBack: false };
+    } else if (pathname === "/profile") {
+      return { title: "Profile", showBack: false };
     } else if (pathname?.startsWith("/habits/")) {
       return { title: "Habits", showBack: true };
     }

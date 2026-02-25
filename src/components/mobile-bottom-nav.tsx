@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, LayoutGrid } from "lucide-react";
+import { Home, LayoutGrid, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function MobileBottomNav() {
@@ -10,6 +10,7 @@ export function MobileBottomNav() {
 
   const isHome = pathname === "/";
   const isHabits = pathname?.startsWith("/habits");
+  const isProfile = pathname === "/profile";
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border">
@@ -37,6 +38,18 @@ export function MobileBottomNav() {
         >
           <LayoutGrid className="w-5 h-5" />
           <span className="text-xs font-medium">Habits</span>
+        </Link>
+        <Link
+          href="/profile"
+          className={cn(
+            "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors",
+            isProfile
+              ? "text-primary"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <User className="w-5 h-5" />
+          <span className="text-xs font-medium">Profile</span>
         </Link>
       </div>
     </nav>
