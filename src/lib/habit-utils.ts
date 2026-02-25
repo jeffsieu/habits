@@ -1,4 +1,9 @@
-import { Habit, HabitProgressEvent, GoalInterval } from "@/types/habit";
+import {
+  Habit,
+  HabitProgressEvent,
+  GoalInterval,
+  RecordingType,
+} from "@/types/habit";
 
 /**
  * Parse a normalized date string to Date object (at midnight local time)
@@ -307,68 +312,234 @@ export function getDisplayProgressValue(
 
 /**
  * Calculate current streak for a habit
- * Streaks are always measured in days
- * For weekly/monthly habits: any day with progress counts toward the streak
- * For daily/custom habits: the habit must be complete on that day
- * A streak continues until a scheduled day is missed
+ * Returns the number of consecutive days since the streak was last broken
+ *
+ * For DAILY/CUSTOM habits:
+ * - Count back from today until we find a scheduled day that was incomplete
+ * - Today is allowed to be incomplete without breaking the streak
+ *
+ * For WEEKLY/MONTHLY habits:
+ * - Count back from today until we find an interval that failed or is doomed
+ * - Current interval doesn't break the streak if it can still be completed
  */
 export function calculateCurrentStreak(
   habit: Habit,
   progressEvents: HabitProgressEvent[],
 ): number {
   const today = normalizeDate(new Date());
+  const todayDate = parseDate(today);
   const startDate = parseDate(habit.startDate.split("T")[0]);
-  let streak = 0;
 
-  // For weekly/monthly habits, use hasProgressOnDate (any entry counts)
-  // For daily/custom habits, use isHabitCompleteOnDate (must be complete)
-  const isIntervalBasedHabit =
-    habit.goalInterval === GoalInterval.WEEKLY ||
-    habit.goalInterval === GoalInterval.MONTHLY;
+  if (todayDate < startDate) return 0;
 
-  let currentDate = parseDate(today);
-
-  while (true) {
-    const dateStr = normalizeDate(currentDate);
-
-    if (currentDate < startDate) break;
-
-    if (isHabitScheduledForDate(habit, currentDate)) {
-      // For interval-based habits, any progress counts as maintaining the streak
-      // For daily/custom habits, the habit must be complete
-      const hasProgress = isIntervalBasedHabit
-        ? hasProgressOnDate(progressEvents, habit.id, dateStr)
-        : isHabitCompleteOnDate(habit, progressEvents, dateStr);
-
-      if (hasProgress) {
-        streak++;
-        currentDate = addDays(currentDate, -1);
-      } else {
-        // Allow current day to be incomplete without breaking streak
-        if (dateStr === today) {
-          currentDate = addDays(currentDate, -1);
-          continue;
-        }
-        break;
-      }
-    } else {
-      // Skip non-scheduled days
-      currentDate = addDays(currentDate, -1);
-    }
-
-    if (streak > 1000) break; // Safety limit
+  // For daily/custom habits, count days back until we find a failure
+  if (
+    habit.goalInterval === GoalInterval.DAILY ||
+    habit.goalInterval === GoalInterval.CUSTOM
+  ) {
+    return calculateDailyStreakDays(
+      habit,
+      progressEvents,
+      todayDate,
+      startDate,
+      today,
+    );
   }
 
-  return streak;
+  // For weekly/monthly habits, count days back until we find a failed interval
+  return calculateIntervalStreakDays(
+    habit,
+    progressEvents,
+    todayDate,
+    startDate,
+  );
 }
 
 /**
- * Check if a habit's streak is "secure" (won't be broken by counting today)
- * Returns true if:
- * - streak > 0 AND (today is not scheduled OR today has progress)
- * Returns false if:
- * - streak === 0
- * - streak > 0 but today is scheduled and has no progress (at risk of breaking)
+ * Calculate streak days for daily/custom habits
+ * Returns the number of consecutive days since last failure
+ */
+function calculateDailyStreakDays(
+  habit: Habit,
+  progressEvents: HabitProgressEvent[],
+  todayDate: Date,
+  startDate: Date,
+  today: string,
+): number {
+  let currentDate = todayDate;
+  let streakDays = 0;
+
+  while (currentDate >= startDate) {
+    const dateStr = normalizeDate(currentDate);
+    const isToday = dateStr === today;
+
+    // Check if this is a scheduled day
+    if (isHabitScheduledForDate(habit, currentDate)) {
+      const isComplete = isHabitCompleteOnDate(habit, progressEvents, dateStr);
+
+      if (!isComplete) {
+        if (isToday) {
+          // Today is incomplete - don't include it in the streak, but don't break yet
+          currentDate = addDays(currentDate, -1);
+          continue;
+        } else {
+          // Past scheduled day was incomplete - streak broken here
+          break;
+        }
+      }
+    }
+
+    // This day is part of the streak (either not scheduled or completed)
+    streakDays++;
+    currentDate = addDays(currentDate, -1);
+
+    if (streakDays > 10000) break; // Safety limit
+  }
+
+  return streakDays;
+}
+
+/**
+ * Calculate streak days for weekly/monthly habits
+ * Returns the number of consecutive days since last failed interval
+ */
+function calculateIntervalStreakDays(
+  habit: Habit,
+  progressEvents: HabitProgressEvent[],
+  todayDate: Date,
+  startDate: Date,
+): number {
+  let currentDate = todayDate;
+  let streakDays = 0;
+  const processedIntervals = new Set<string>();
+
+  while (currentDate >= startDate) {
+    const interval = getHabitIntervalBounds(habit, currentDate);
+    const intervalKey = `${normalizeDate(interval.start)}-${normalizeDate(interval.end)}`;
+
+    // Only process each interval once
+    if (!processedIntervals.has(intervalKey)) {
+      processedIntervals.add(intervalKey);
+
+      const intervalEnded = todayDate > interval.end;
+
+      if (!intervalEnded) {
+        // Current ongoing interval
+        const canComplete = canIntervalBeCompleted(
+          habit,
+          progressEvents,
+          interval.start,
+          interval.end,
+          todayDate,
+        );
+
+        if (!canComplete) {
+          // Current interval is doomed - streak broken
+          break;
+        }
+
+        // Count all days from interval start to today
+        const daysInInterval = daysBetween(interval.start, todayDate) + 1;
+        streakDays += daysInInterval;
+      } else {
+        // Past interval - check if it was completed
+        const intervalComplete = isHabitCompleteOnDate(
+          habit,
+          progressEvents,
+          normalizeDate(interval.end),
+        );
+
+        if (!intervalComplete) {
+          // Interval failed - streak broken
+          break;
+        }
+
+        // Count all days in this completed interval
+        const daysInInterval = daysBetween(interval.start, interval.end) + 1;
+        streakDays += daysInInterval;
+      }
+    }
+
+    // Move to the day before this interval started
+    currentDate = addDays(interval.start, -1);
+
+    if (streakDays > 10000) break; // Safety limit
+  }
+
+  return streakDays;
+}
+
+/**
+ * Check if an interval can still be completed given the remaining days
+ * Returns false if the interval is "doomed" (cannot be completed no matter what)
+ */
+function canIntervalBeCompleted(
+  habit: Habit,
+  progressEvents: HabitProgressEvent[],
+  intervalStart: Date,
+  intervalEnd: Date,
+  today: Date,
+): boolean {
+  // Get current progress in this interval
+  const currentProgress = getProgressValueForInterval(
+    habit,
+    progressEvents,
+    intervalEnd,
+  );
+  const target = habit.goalTarget ?? 1;
+
+  // Already completed
+  if (habit.isGoodHabit && currentProgress >= target) {
+    return true;
+  }
+  if (!habit.isGoodHabit && currentProgress <= target) {
+    return true;
+  }
+
+  // For bad habits with COUNT/VALUE, we can't determine if it's doomed
+  // (we can't "undo" progress), so assume it's doomed if already over target
+  if (!habit.isGoodHabit) {
+    return false;
+  }
+
+  // For good habits, check if we can still reach the target
+  // Count remaining scheduled days (including today if scheduled)
+  let remainingDays = 0;
+  let currentDate = today;
+
+  while (currentDate <= intervalEnd) {
+    if (isHabitScheduledForDate(habit, currentDate)) {
+      const dateStr = normalizeDate(currentDate);
+      const hasProgress = hasProgressOnDate(progressEvents, habit.id, dateStr);
+
+      // Only count days where we haven't already logged progress
+      if (!hasProgress) {
+        remainingDays++;
+      }
+    }
+    currentDate = addDays(currentDate, 1);
+  }
+
+  // For YES_NO habits, max we can add is 1 per day
+  if (habit.recordingType === RecordingType.YES_NO) {
+    const maxPossibleProgress = currentProgress + remainingDays;
+    return maxPossibleProgress >= target;
+  }
+
+  // For COUNT and VALUE habits, we can't determine if it's doomed
+  // (theoretically unlimited progress per day), so assume it's achievable
+  return true;
+}
+
+/**
+ * Check if a habit's streak is "secure" (won't be broken)
+ *
+ * For DAILY/CUSTOM habits:
+ * - Secure if today is not scheduled OR today is complete
+ *
+ * For WEEKLY/MONTHLY habits:
+ * - Secure if the current interval can still be completed (not "doomed")
+ * - At risk if the interval is doomed (impossible to meet goal with remaining days)
  */
 export function isStreakSecure(
   habit: Habit,
@@ -381,7 +552,22 @@ export function isStreakSecure(
   const today = new Date();
   const todayStr = normalizeDate(today);
 
-  // Check if today is scheduled for this habit
+  // For weekly/monthly habits, check if current interval can still be completed
+  if (
+    habit.goalInterval === GoalInterval.WEEKLY ||
+    habit.goalInterval === GoalInterval.MONTHLY
+  ) {
+    const interval = getHabitIntervalBounds(habit, today);
+    return canIntervalBeCompleted(
+      habit,
+      progressEvents,
+      interval.start,
+      interval.end,
+      today,
+    );
+  }
+
+  // For daily/custom habits, check if today is complete or not scheduled
   const isTodayScheduled = isHabitScheduledForDate(habit, today);
 
   if (!isTodayScheduled) {
@@ -389,18 +575,140 @@ export function isStreakSecure(
     return true;
   }
 
-  // Today is scheduled - check if there's progress
-  // For weekly/monthly habits, any progress secures the streak
-  // For daily/custom habits, it must be complete
-  const isIntervalBasedHabit =
-    habit.goalInterval === GoalInterval.WEEKLY ||
-    habit.goalInterval === GoalInterval.MONTHLY;
+  // Today is scheduled - check if it's complete
+  return isHabitCompleteOnDate(habit, progressEvents, todayStr);
+}
 
-  if (isIntervalBasedHabit) {
-    return hasProgressOnDate(progressEvents, habit.id, todayStr);
+/**
+ * Check if a specific date is within the current active streak
+ * Returns true if the date is part of the "safe" streak days
+ * (days with no progress but still maintaining the streak)
+ */
+export function isDateWithinStreak(
+  habit: Habit,
+  progressEvents: HabitProgressEvent[],
+  checkDate: Date | string,
+): boolean {
+  const today = normalizeDate(new Date());
+  const todayDate = parseDate(today);
+  const checkDateStr =
+    typeof checkDate === "string" ? checkDate : normalizeDate(checkDate);
+  const checkDateObj =
+    typeof checkDate === "string" ? parseDate(checkDate) : checkDate;
+  const startDate = parseDate(habit.startDate.split("T")[0]);
+
+  // Can't be in streak if before start date or after today
+  if (checkDateObj < startDate || checkDateObj > todayDate) {
+    return false;
   }
 
-  return isHabitCompleteOnDate(habit, progressEvents, todayStr);
+  // Check if there's a current streak
+  const streak = calculateCurrentStreak(habit, progressEvents);
+  if (streak === 0) return false;
+
+  // For daily/custom habits
+  if (
+    habit.goalInterval === GoalInterval.DAILY ||
+    habit.goalInterval === GoalInterval.CUSTOM
+  ) {
+    // Walk back from today to find where the streak breaks
+    let currentDate = todayDate;
+    while (currentDate >= startDate) {
+      const dateStr = normalizeDate(currentDate);
+
+      if (isHabitScheduledForDate(habit, currentDate)) {
+        const isComplete = isHabitCompleteOnDate(
+          habit,
+          progressEvents,
+          dateStr,
+        );
+
+        if (!isComplete && dateStr !== today) {
+          // Found where streak broke - check date is not before this
+          return checkDateObj > currentDate;
+        }
+      }
+
+      // If we've reached the check date while walking back, it's in the streak
+      if (dateStr === checkDateStr) {
+        return true;
+      }
+
+      currentDate = addDays(currentDate, -1);
+    }
+
+    return false;
+  }
+
+  // For weekly/monthly habits - check if the date's interval is part of the streak
+
+  // Walk back through intervals
+  let currentDate = todayDate;
+  const processedIntervals = new Set<string>();
+
+  while (currentDate >= startDate) {
+    const interval = getHabitIntervalBounds(habit, currentDate);
+    const intervalKey = `${normalizeDate(interval.start)}-${normalizeDate(interval.end)}`;
+
+    if (!processedIntervals.has(intervalKey)) {
+      processedIntervals.add(intervalKey);
+
+      // Check if this is the interval containing our check date
+      if (checkDateObj >= interval.start && checkDateObj <= interval.end) {
+        // Check if this interval is part of the streak
+        const intervalEnded = todayDate > interval.end;
+
+        if (!intervalEnded) {
+          // Current interval - check if it can be completed
+          return canIntervalBeCompleted(
+            habit,
+            progressEvents,
+            interval.start,
+            interval.end,
+            todayDate,
+          );
+        } else {
+          // Past interval - check if it was completed
+          return isHabitCompleteOnDate(
+            habit,
+            progressEvents,
+            normalizeDate(interval.end),
+          );
+        }
+      }
+
+      // Check if this interval failed (which would mean dates after it are not in streak)
+      const intervalEnded = todayDate > interval.end;
+
+      if (!intervalEnded) {
+        const canComplete = canIntervalBeCompleted(
+          habit,
+          progressEvents,
+          interval.start,
+          interval.end,
+          todayDate,
+        );
+        if (!canComplete) {
+          // Current interval is doomed - dates before today are not in streak
+          return false;
+        }
+      } else {
+        const intervalComplete = isHabitCompleteOnDate(
+          habit,
+          progressEvents,
+          normalizeDate(interval.end),
+        );
+        if (!intervalComplete) {
+          // This interval failed - check if our date is after this interval
+          return checkDateObj < interval.start;
+        }
+      }
+    }
+
+    currentDate = addDays(interval.start, -1);
+  }
+
+  return false;
 }
 
 /**

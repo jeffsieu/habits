@@ -19,6 +19,7 @@ import {
   isStreakSecure,
   isHabitScheduledForDate,
   getProgressValueOnDate,
+  isDateWithinStreak,
 } from "@/lib/habit-utils";
 import { HabitIconDisplay } from "@/lib/habit-icons";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ import {
   Check,
   Plus,
   Minus,
+  ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
 import { useState, ViewTransition } from "react";
@@ -430,6 +432,11 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                             dateStr,
                           );
                           const isComplete = value > 0;
+                          const isInStreak = isDateWithinStreak(
+                            habit,
+                            progressEvents,
+                            date,
+                          );
                           const isToday =
                             normalizeDate(date) === normalizeDate(today);
 
@@ -466,20 +473,17 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                                 <div
                                   className={cn(
                                     "relative w-full aspect-square rounded-xl transition-all duration-300 border-2",
-                                    isToday &&
+                                    isToday && [
                                       "ring-2 ring-offset-2 ring-offset-background scale-105",
-                                    !isScheduled &&
-                                      "bg-muted/20 border-muted/30",
-                                    isScheduled &&
-                                      !isComplete &&
-                                      "bg-muted/40 border-muted/50",
-                                    isScheduled &&
-                                      isComplete &&
-                                      "shadow-[0_4px_12px_var(--primary)_40] shadow-primary/40 bg-primary border-primary",
-                                    isToday &&
                                       isScheduled &&
+                                        !isComplete &&
+                                        "border-primary",
+                                    ],
+                                    isInStreak &&
                                       !isComplete &&
-                                      "border-primary",
+                                      "border-primary/50",
+                                    isComplete &&
+                                      "shadow-[0_4px_12px_var(--primary)_40] shadow-primary/40 bg-primary border-primary",
                                   )}
                                 >
                                   {/* Checkmark for completed days */}
@@ -487,6 +491,14 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                                     <div className="absolute inset-0 flex items-center justify-center">
                                       <Check className="w-4 h-4 text-white font-bold drop-shadow" />
                                     </div>
+                                  )}
+                                  {/* Right arrow for days in streak without progress */}
+                                  {!isToday && isInStreak && !isComplete && (
+                                    <ArrowRight
+                                      className={cn(
+                                        "absolute inset-0 m-auto w-4 h-4 text-primary/60",
+                                      )}
+                                    />
                                   )}
                                 </div>
                               </div>

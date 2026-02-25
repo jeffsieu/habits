@@ -8,6 +8,8 @@ import {
   getHabitsForDate,
   isHabitCompleteOnDate,
   addDays,
+  isDateWithinStreak,
+  getProgressValueOnDate,
 } from "@/lib/habit-utils";
 import { Habit, HabitProgressEvent } from "@/types/habit";
 import { Button } from "@/components/ui/button";
@@ -56,7 +58,13 @@ export function CalendarView({
   const streakInfo = useMemo(() => {
     const info: Record<
       string,
-      { isComplete: boolean; prevComplete: boolean; nextComplete: boolean }
+      {
+        isComplete: boolean;
+        prevComplete: boolean;
+        nextComplete: boolean;
+        isWithinStreak: boolean;
+        hasProgress: boolean;
+      }
     > = {};
     dates.forEach((date) => {
       const dateStr = normalizeDate(date);
@@ -67,27 +75,35 @@ export function CalendarView({
       const isComplete =
         scheduledHabits.length > 0 && completedCount === scheduledHabits.length;
 
-      // Check previous day
+      // Check if date is within any habit's streak
+      const isWithinStreak = habits.some((h) =>
+        isDateWithinStreak(h, progressEvents, date),
+      );
+
+      // Check if date has any progress
+      const hasProgress = habits.some(
+        (h) => getProgressValueOnDate(progressEvents, h.id, dateStr) > 0,
+      );
+
+      // Check if previous day is within streak
       const prevDate = addDays(date, -1);
-      const prevDateStr = normalizeDate(prevDate);
-      const prevScheduled = getHabitsForDate(habits, prevDate);
-      const prevCompleted = prevScheduled.filter((h) =>
-        isHabitCompleteOnDate(h, progressEvents, prevDateStr),
-      ).length;
-      const prevComplete =
-        prevScheduled.length > 0 && prevCompleted === prevScheduled.length;
+      const prevWithinStreak = habits.some((h) =>
+        isDateWithinStreak(h, progressEvents, prevDate),
+      );
 
-      // Check next day
+      // Check if next day is within streak
       const nextDate = addDays(date, 1);
-      const nextDateStr = normalizeDate(nextDate);
-      const nextScheduled = getHabitsForDate(habits, nextDate);
-      const nextCompleted = nextScheduled.filter((h) =>
-        isHabitCompleteOnDate(h, progressEvents, nextDateStr),
-      ).length;
-      const nextComplete =
-        nextScheduled.length > 0 && nextCompleted === nextScheduled.length;
+      const nextWithinStreak = habits.some((h) =>
+        isDateWithinStreak(h, progressEvents, nextDate),
+      );
 
-      info[dateStr] = { isComplete, prevComplete, nextComplete };
+      info[dateStr] = {
+        isComplete,
+        prevComplete: prevWithinStreak,
+        nextComplete: nextWithinStreak,
+        isWithinStreak,
+        hasProgress,
+      };
     });
     return info;
   }, [dates, habits, progressEvents]);
@@ -148,11 +164,11 @@ export function CalendarView({
           const isCurrentMonth = date.getMonth() === month;
           const isSelected = dateStr === normalizeDate(selectedDate);
           const isTodayDate = isToday(date);
+          const hasProgress = streakInfo[dateStr]?.hasProgress ?? false;
           const scheduledHabits = getHabitsForDate(habits, date);
           const completedCount = scheduledHabits.filter((h) =>
             isHabitCompleteOnDate(h, progressEvents, dateStr),
           ).length;
-          const totalCount = scheduledHabits.length;
 
           const streak = streakInfo[dateStr];
           const dayOfWeek = date.getDay();
@@ -164,11 +180,12 @@ export function CalendarView({
               isCurrentMonth={isCurrentMonth}
               isSelected={isSelected}
               isToday={isTodayDate}
-              totalHabits={totalCount}
               completedHabits={completedCount}
-              isStreakStart={streak?.isComplete && !streak?.prevComplete}
-              isStreakEnd={streak?.isComplete && !streak?.nextComplete}
+              isStreakStart={streak?.isWithinStreak && !streak?.prevComplete}
+              isStreakEnd={streak?.isWithinStreak && !streak?.nextComplete}
               isStreakComplete={streak?.isComplete ?? false}
+              hasProgress={hasProgress}
+              isWithinStreak={streak?.isWithinStreak ?? false}
               isFirstDayOfWeek={dayOfWeek === 0}
               isLastDayOfWeek={dayOfWeek === 6}
               onClick={() => onDateSelect(date)}
@@ -185,11 +202,12 @@ interface DayCellProps {
   isCurrentMonth: boolean;
   isSelected: boolean;
   isToday: boolean;
-  totalHabits: number;
   completedHabits: number;
   isStreakStart: boolean;
   isStreakEnd: boolean;
   isStreakComplete: boolean;
+  hasProgress: boolean;
+  isWithinStreak: boolean;
   isFirstDayOfWeek: boolean;
   isLastDayOfWeek: boolean;
   onClick: () => void;
@@ -200,20 +218,16 @@ function DayCell({
   isCurrentMonth,
   isSelected,
   isToday,
-  totalHabits,
-  completedHabits,
   isStreakStart,
   isStreakEnd,
-  isStreakComplete,
+  hasProgress,
+  isWithinStreak,
   isFirstDayOfWeek,
   isLastDayOfWeek,
   onClick,
 }: DayCellProps) {
-  const hasHabits = totalHabits > 0;
-  const completionRatio = hasHabits ? completedHabits / totalHabits : 0;
-
   // Determine streak connector styling
-  const showStreakBg = isStreakComplete && isCurrentMonth;
+  const showStreakBg = isWithinStreak && isCurrentMonth;
   const streakRoundedLeft = isStreakStart || isFirstDayOfWeek;
   const streakRoundedRight = isStreakEnd || isLastDayOfWeek;
 
@@ -222,7 +236,7 @@ function DayCell({
       onClick={onClick}
       className={cn(
         "group relative flex flex-col items-center justify-center transition-all duration-150",
-        "py-2.5 lg:py-3",
+        "py-2.5 lg:py-3 aspect-square",
         "hover:bg-muted/50",
         !isCurrentMonth && "opacity-30",
       )}
@@ -242,48 +256,21 @@ function DayCell({
       <div
         className={cn(
           "relative z-10 w-8 h-8 lg:w-9 lg:h-9 flex items-center justify-center rounded-full transition-all",
-          isSelected && "bg-primary shadow-sm",
+          hasProgress && "bg-primary shadow-sm",
           isToday && !isSelected && "ring-2 ring-primary/40",
+          isSelected && "outline-2 outline-primary outline-offset-8",
         )}
       >
         <span
           className={cn(
             "text-sm lg:text-base font-medium transition-colors",
-            isSelected ? "text-primary-foreground" : "text-foreground",
+            hasProgress ? "text-primary-foreground" : "text-foreground",
             !isCurrentMonth && "text-muted-foreground",
           )}
         >
           {date.getDate()}
         </span>
       </div>
-
-      {/* Progress indicator dots */}
-      {hasHabits && !isStreakComplete && (
-        <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex items-center gap-0.5">
-          {totalHabits <= 3 ? (
-            <div className="flex items-center gap-0.5">
-              {Array.from({ length: totalHabits }).map((_, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    "w-1 h-1 rounded-full transition-colors",
-                    i < completedHabits
-                      ? "bg-success"
-                      : "bg-muted-foreground/20",
-                  )}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="w-4 h-1 rounded-full overflow-hidden bg-muted-foreground/20">
-              <div
-                className="h-full rounded-full bg-success transition-all duration-300"
-                style={{ width: `${completionRatio * 100}%` }}
-              />
-            </div>
-          )}
-        </div>
-      )}
     </button>
   );
 }

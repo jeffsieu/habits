@@ -15,10 +15,11 @@ import {
   getProgressValueOnDate,
   addDays,
   isStreakSecure,
+  isDateWithinStreak,
 } from "@/lib/habit-utils";
 import { HabitIconDisplay } from "@/lib/habit-icons";
 import { cn } from "@/lib/utils";
-import { Plus, Minus, Flame, Check } from "lucide-react";
+import { Plus, Minus, Flame, Check, ArrowRight } from "lucide-react";
 
 interface HabitGridViewProps {
   habits: Habit[];
@@ -115,6 +116,9 @@ function HabitRow({
         const isOccurrenceBased =
           habit.recordingType === RecordingType.COUNT ||
           habit.recordingType === RecordingType.VALUE;
+        // Check if this day is within the active streak despite having no progress
+        const isWithinStreak =
+          !hasProgress && isDateWithinStreak(habit, progressEvents, date);
 
         return (
           <td
@@ -137,9 +141,13 @@ function HabitRow({
                       ? isToday
                         ? "bg-primary"
                         : "bg-muted-foreground/60"
-                      : isToday
-                        ? "bg-muted/80 border border-primary/30"
-                        : "bg-muted/50",
+                      : isWithinStreak
+                        ? isToday
+                          ? "bg-muted/80 border-2 border-primary/40"
+                          : "bg-muted/50 border-2 border-muted-foreground/30"
+                        : isToday
+                          ? "bg-muted/80 border border-primary/30"
+                          : "bg-muted/50",
                 )}
               >
                 {/* Count display - centered */}
@@ -156,6 +164,17 @@ function HabitRow({
                   >
                     {currentValue}
                   </span>
+                )}
+
+                {/* Skip indicator - shown when within streak but no progress */}
+                {isScheduled && isWithinStreak && !hasProgress && (
+                  <ArrowRight
+                    className={cn(
+                      "w-3 h-3",
+                      isToday ? "text-primary/60" : "text-muted-foreground/50",
+                    )}
+                    strokeWidth={2}
+                  />
                 )}
 
                 {/* Buttons overlay - visible on hover */}
@@ -218,16 +237,22 @@ function HabitRow({
                       ? isToday
                         ? "bg-primary hover:bg-primary/90"
                         : "bg-muted-foreground/60 hover:bg-muted-foreground/70"
-                      : isToday
-                        ? "bg-muted/80 hover:bg-primary/30 border border-primary/30"
-                        : "bg-muted/50 hover:bg-muted"
+                      : isWithinStreak
+                        ? isToday
+                          ? "bg-muted/80 hover:bg-primary/30 border-2 border-primary/40"
+                          : "bg-muted/50 hover:bg-muted border-2 border-muted-foreground/30"
+                        : isToday
+                          ? "bg-muted/80 hover:bg-primary/30 border border-primary/30"
+                          : "bg-muted/50 hover:bg-muted"
                     : "habit-cell-striped cursor-not-allowed",
                 )}
                 title={
                   isScheduled
                     ? hasProgress
                       ? "Completed - click to undo"
-                      : "Click to complete"
+                      : isWithinStreak
+                        ? "Within active streak"
+                        : "Click to complete"
                     : "Not scheduled"
                 }
               >
@@ -238,6 +263,15 @@ function HabitRow({
                       isToday ? "text-primary-foreground" : "text-background",
                     )}
                     strokeWidth={3}
+                  />
+                )}
+                {isScheduled && isWithinStreak && !hasProgress && (
+                  <ArrowRight
+                    className={cn(
+                      "w-3 h-3",
+                      isToday ? "text-primary/60" : "text-muted-foreground/50",
+                    )}
+                    strokeWidth={2}
                   />
                 )}
               </button>
