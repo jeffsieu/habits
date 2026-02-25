@@ -10,7 +10,7 @@ import {
   EndConditionType,
   WEEKDAY_NAMES,
 } from "@/types/habit";
-import { normalizeDate, parseDate, formatDate } from "@/lib/habit-utils";
+import { normalizeDate, parseDate } from "@/lib/habit-utils";
 import {
   HABIT_ICONS,
   HABIT_ICON_OPTIONS,
@@ -39,11 +39,9 @@ import {
   Plus,
   ChevronDown,
   X,
-  Repeat,
   Target,
   CalendarDays,
   Tag,
-  Sparkles,
   ThumbsUp,
   ThumbsDown,
   Check,

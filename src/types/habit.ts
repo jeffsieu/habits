@@ -47,6 +47,9 @@ export interface Habit {
   endConditionType?: EndConditionType | null;
   endConditionValue?: string | null; // Stores date string or numeric value
 
+  // Display order for custom sorting
+  order: number;
+
   // Timestamps
   createdAt: string;
   updatedAt: string;

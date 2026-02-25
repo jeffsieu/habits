@@ -1,15 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { inspirationalQuotes, Quote } from "@/lib/quotes";
 
-export function useRandomQuote(): Quote | null {
-  const [quote, setQuote] = useState<Quote | null>(null);
-
-  useEffect(() => {
+export function useRandomQuote(): Quote {
+  const [quote] = useState<Quote>(() => {
     const randomIndex = Math.floor(Math.random() * inspirationalQuotes.length);
-    setQuote(inspirationalQuotes[randomIndex]);
-  }, []);
+    return inspirationalQuotes[randomIndex];
+  });
 
   return quote;
 }

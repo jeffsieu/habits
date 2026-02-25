@@ -176,13 +176,14 @@ export function getHabitIcon(iconName?: string | null): LucideIcon {
 }
 
 // Render a habit icon - use this instead of getHabitIcon in render
-export function HabitIconDisplay({ 
-  iconName, 
-  className 
-}: { 
-  iconName?: string | null; 
-  className?: string 
+export function HabitIconDisplay({
+  iconName,
+  className,
+}: {
+  iconName?: string | null;
+  className?: string;
 }) {
-  const IconComponent = getHabitIcon(iconName);
-  return <IconComponent className={className} />;
+  const icon = iconName && HABIT_ICONS[iconName] ? iconName : "CircleDot";
+  const Icon = HABIT_ICONS[icon];
+  return <Icon className={className} />;
 }

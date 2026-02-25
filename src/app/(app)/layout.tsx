@@ -13,8 +13,15 @@ interface AppLayoutProps {
 }
 
 function AppLayoutContent({ children }: AppLayoutProps) {
-  const { habits, tags, progressEvents, isLoaded, addTag, updateTag } =
-    useHabitsContext();
+  const {
+    habits,
+    tags,
+    progressEvents,
+    isLoaded,
+    addTag,
+    updateTag,
+    reorderHabits,
+  } = useHabitsContext();
   const quote = useRandomQuote();
   const [hideLoader, setHideLoader] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -63,6 +70,7 @@ function AppLayoutContent({ children }: AppLayoutProps) {
               progressEvents={progressEvents}
               onAddTag={handleAddTag}
               onUpdateTag={handleUpdateTag}
+              onReorderHabits={reorderHabits}
             />
           </div>
 

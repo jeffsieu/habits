@@ -25,6 +25,7 @@ function transformHabit(dbHabit: {
   startDate: Date;
   endConditionType: string | null;
   endConditionValue: string | null;
+  order: number;
   createdAt: Date;
   updatedAt: Date;
   tags?: { id: string }[];
@@ -44,6 +45,7 @@ function transformHabit(dbHabit: {
     startDate: dbHabit.startDate.toISOString().split("T")[0],
     endConditionType: dbHabit.endConditionType as Habit["endConditionType"],
     endConditionValue: dbHabit.endConditionValue,
+    order: dbHabit.order,
     tagIds: dbHabit.tags?.map((t) => t.id) ?? [],
     createdAt: dbHabit.createdAt.toISOString(),
     updatedAt: dbHabit.updatedAt.toISOString(),

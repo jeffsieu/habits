@@ -1,9 +1,4 @@
-import {
-  Habit,
-  HabitProgressEvent,
-  GoalInterval,
-  RecordingType,
-} from "@/types/habit";
+import { Habit, HabitProgressEvent, GoalInterval } from "@/types/habit";
 
 /**
  * Parse a normalized date string to Date object (at midnight local time)

@@ -24,6 +24,7 @@ export interface StorageAdapter {
   createHabit(input: CreateHabitInput): Promise<Habit>;
   updateHabit(input: UpdateHabitInput): Promise<Habit | null>;
   deleteHabit(id: string): Promise<void>;
+  reorderHabits(habitIds: string[]): Promise<void>;
 
   // Tags
   fetchTags(): Promise<HabitTag[]>;

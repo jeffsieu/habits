@@ -46,13 +46,20 @@ export function HabitListView({
     );
 
     // Sort habits: incomplete first, completed at bottom
+    // Within each group, maintain custom order (order field)
     return filtered.sort((a, b) => {
       const aProgress = getProgressValueOnDate(progressEvents, a.id, dateStr);
       const bProgress = getProgressValueOnDate(progressEvents, b.id, dateStr);
       const aCompleted = aProgress > 0;
       const bCompleted = bProgress > 0;
-      if (aCompleted === bCompleted) return 0;
-      return aCompleted ? 1 : -1;
+
+      // Primary sort: completion status
+      if (aCompleted !== bCompleted) {
+        return aCompleted ? 1 : -1;
+      }
+
+      // Secondary sort: custom order (lower order numbers come first)
+      return a.order - b.order;
     });
   }, [habits, selectedDate, progressEvents, dateStr]);
 

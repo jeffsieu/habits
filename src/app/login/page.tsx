@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 
 export default async function LoginPage() {
   const session = await auth();
@@ -65,9 +66,9 @@ export default async function LoginPage() {
         <p className="mt-8 text-center text-sm text-muted-foreground">
           You can also use the app without signing in.
           <br />
-          <a href="/" className="text-primary hover:underline">
+          <Link href="/" className="text-primary hover:underline">
             Continue as guest
-          </a>
+          </Link>
         </p>
       </div>
     </div>

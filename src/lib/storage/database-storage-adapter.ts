@@ -15,6 +15,7 @@ import {
   createHabit as createHabitDb,
   updateHabitInDb,
   deleteHabitFromDb,
+  reorderHabitsInDb,
   createTag as createTagDb,
   updateTagInDb,
   deleteTagFromDb,
@@ -42,6 +43,10 @@ export class DatabaseStorageAdapter implements StorageAdapter {
 
   async deleteHabit(id: string): Promise<void> {
     return deleteHabitFromDb(id);
+  }
+
+  async reorderHabits(habitIds: string[]): Promise<void> {
+    return reorderHabitsInDb(habitIds);
   }
 
   // Tags

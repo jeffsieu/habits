@@ -37,6 +37,7 @@ function transformHabit(dbHabit: {
   startDate: Date;
   endConditionType: string | null;
   endConditionValue: string | null;
+  order: number;
   createdAt: Date;
   updatedAt: Date;
   tags?: { id: string }[];
@@ -56,6 +57,7 @@ function transformHabit(dbHabit: {
     startDate: dbHabit.startDate.toISOString(),
     endConditionType: dbHabit.endConditionType as Habit["endConditionType"],
     endConditionValue: dbHabit.endConditionValue,
+    order: dbHabit.order,
     createdAt: dbHabit.createdAt.toISOString(),
     updatedAt: dbHabit.updatedAt.toISOString(),
     tagIds: dbHabit.tags?.map((t) => t.id) ?? [],
@@ -103,13 +105,22 @@ export async function fetchHabits(): Promise<Habit[]> {
   const habits = await prisma.habit.findMany({
     where: { userId },
     include: { tags: { select: { id: true } } },
-    orderBy: { createdAt: "asc" },
+    orderBy: { order: "asc" },
   });
   return habits.map(transformHabit);
 }
 
 export async function createHabit(input: CreateHabitInput): Promise<Habit> {
   const userId = await requireUserId();
+
+  // Calculate the next order value (max + 1)
+  const maxOrderHabit = await prisma.habit.findFirst({
+    where: { userId },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+  const nextOrder = (maxOrderHabit?.order ?? -1) + 1;
+
   const habit = await prisma.habit.create({
     data: {
       userId,
@@ -126,6 +137,7 @@ export async function createHabit(input: CreateHabitInput): Promise<Habit> {
       startDate: new Date(input.startDate),
       endConditionType: input.endConditionType,
       endConditionValue: input.endConditionValue,
+      order: nextOrder,
       tags: input.tagIds?.length
         ? { connect: input.tagIds.map((id) => ({ id })) }
         : undefined,
@@ -168,6 +180,20 @@ export async function deleteHabitFromDb(id: string): Promise<void> {
   await prisma.habit.deleteMany({
     where: { id, userId },
   });
+}
+
+export async function reorderHabitsInDb(habitIds: string[]): Promise<void> {
+  const userId = await requireUserId();
+
+  // Batch update habits with their new order values
+  await prisma.$transaction(
+    habitIds.map((habitId, index) =>
+      prisma.habit.updateMany({
+        where: { id: habitId, userId },
+        data: { order: index },
+      }),
+    ),
+  );
 }
 
 // ============ Tag Operations ============

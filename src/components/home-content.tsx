@@ -20,7 +20,6 @@ export function HomeContent() {
     addHabit,
     addTag,
     logProgress,
-    reorderHabits,
   } = useHabitsContext();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -43,10 +42,6 @@ export function HomeContent() {
 
   const handleCreateTag = (name: string, color?: string) => {
     return addTag({ name, color });
-  };
-
-  const handleReorderHabits = (habitIds: string[]) => {
-    reorderHabits(habitIds);
   };
 
   return (
@@ -73,7 +68,6 @@ export function HomeContent() {
             progressEvents={progressEvents}
             onLogProgress={handleLogProgress}
             onAddHabit={handleAddHabit}
-            onReorderHabits={handleReorderHabits}
           />
         </div>
       </div>

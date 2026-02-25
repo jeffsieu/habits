@@ -50,6 +50,10 @@ export class LocalStorageAdapter implements StorageAdapter {
   async createHabit(input: CreateHabitInput): Promise<Habit> {
     const habits = await this.fetchHabits();
     const now = new Date().toISOString();
+
+    // Calculate the next order value (max + 1)
+    const maxOrder = habits.reduce((max, h) => Math.max(max, h.order || 0), -1);
+
     const newHabit: Habit = {
       id: generateId(),
       name: input.name,
@@ -65,6 +69,7 @@ export class LocalStorageAdapter implements StorageAdapter {
       startDate: input.startDate,
       endConditionType: input.endConditionType || null,
       endConditionValue: input.endConditionValue || null,
+      order: maxOrder + 1,
       createdAt: now,
       updatedAt: now,
       tagIds: input.tagIds || [],
@@ -98,6 +103,25 @@ export class LocalStorageAdapter implements StorageAdapter {
     const progress = await this.fetchProgress();
     const updatedProgress = progress.filter((p) => p.habitId !== id);
     setToStorage(STORAGE_KEYS.PROGRESS, updatedProgress);
+  }
+
+  async reorderHabits(habitIds: string[]): Promise<void> {
+    const habits = await this.fetchHabits();
+
+    // Update order for each habit based on its position in the habitIds array
+    const updatedHabits = habits.map((habit) => {
+      const newOrder = habitIds.indexOf(habit.id);
+      if (newOrder !== -1) {
+        return {
+          ...habit,
+          order: newOrder,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return habit;
+    });
+
+    setToStorage(STORAGE_KEYS.HABITS, updatedHabits);
   }
 
   // Tags

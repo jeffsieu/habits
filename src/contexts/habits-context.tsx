@@ -11,6 +11,7 @@ import {
   useUpdateHabit,
   useDeleteHabit,
 } from "@/hooks/mutations/use-habit-mutations";
+import { useReorderHabits } from "@/hooks/mutations/use-reorder-habits-mutation";
 import {
   useCreateTag,
   useUpdateTag,
@@ -98,6 +99,7 @@ export function HabitsProvider({ children }: HabitsProviderProps) {
   const createHabitMutation = useCreateHabit();
   const updateHabitMutation = useUpdateHabit();
   const deleteHabitMutation = useDeleteHabit();
+  const reorderHabitsMutation = useReorderHabits();
 
   const createTagMutation = useCreateTag();
   const updateTagMutation = useUpdateTag();
@@ -139,10 +141,8 @@ export function HabitsProvider({ children }: HabitsProviderProps) {
       deleteHabit: async (id) => {
         await deleteHabitMutation.mutateAsync(id);
       },
-      reorderHabits: () => {
-        // TODO: Implement reordering with TanStack Query
-        // This requires storing order in the database and updating the mutation
-        console.warn("reorderHabits not yet implemented with TanStack Query");
+      reorderHabits: (habitIds) => {
+        reorderHabitsMutation.mutate(habitIds);
       },
       getHabit: (id) => habits.find((h) => h.id === id),
       getHabitWithTags: (id) => {
@@ -215,6 +215,7 @@ export function HabitsProvider({ children }: HabitsProviderProps) {
     createHabitMutation,
     updateHabitMutation,
     deleteHabitMutation,
+    reorderHabitsMutation,
     createTagMutation,
     updateTagMutation,
     deleteTagMutation,

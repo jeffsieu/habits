@@ -103,6 +103,9 @@ model Habit {
   userId String?
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Display order for custom sorting
+  order Int @default(0)
+
   // Recording type: how progress is logged each day
   recordingType RecordingType @default(YES_NO)
 
@@ -128,6 +131,7 @@ model Habit {
   progressEvents HabitProgressEvent[]
 
   @@index([userId])
+  @@index([userId, order])
 }
 
 // Tag model for categorizing habits

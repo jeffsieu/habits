@@ -42,6 +42,7 @@ export function useCreateHabit() {
         startDate: newHabit.startDate,
         endConditionType: newHabit.endConditionType || null,
         endConditionValue: newHabit.endConditionValue || null,
+        order: 0, // Temporary order, will be set by server
         createdAt: now,
         updatedAt: now,
         tagIds: newHabit.tagIds || [],
