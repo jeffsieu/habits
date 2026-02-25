@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { PendingLocalData } from "@/hooks/use-habits-with-auth";
+import { PendingLocalData } from "@/lib/storage/storage-adapter";
 
 interface SyncPromptDialogProps {
   pendingData: PendingLocalData;
