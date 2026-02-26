@@ -19,7 +19,7 @@ import {
   isStreakSecure,
   isHabitScheduledForDate,
   getProgressValueOnDate,
-  isDateWithinStreak,
+  shouldShowCheckmark,
 } from "@/lib/habit-utils";
 import { HabitIconDisplay } from "@/lib/habit-icons";
 import { cn } from "@/lib/utils";
@@ -432,7 +432,7 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
                             dateStr,
                           );
                           const isComplete = value > 0;
-                          const isInStreak = isDateWithinStreak(
+                          const isInStreak = shouldShowCheckmark(
                             habit,
                             progressEvents,
                             date,
@@ -607,7 +607,7 @@ export function HabitDetailContent({ habitId }: HabitDetailContentProps) {
             <div>
               <div className="bg-card rounded-2xl border border-border p-4 lg:p-6">
                 <CalendarView
-                  habits={[habit]}
+                  habit={habit}
                   progressEvents={progressEvents.filter(
                     (p) => p.habitId === habit.id,
                   )}

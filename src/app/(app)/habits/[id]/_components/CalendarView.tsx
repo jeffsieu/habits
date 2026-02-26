@@ -5,11 +5,9 @@ import {
   getCalendarGrid,
   normalizeDate,
   isToday,
-  getHabitsForDate,
-  isHabitCompleteOnDate,
   addDays,
-  isDateWithinStreak,
-  getProgressValueOnDate,
+  calculateDayStatistics,
+  DayStatistics,
 } from "@/lib/habit-utils";
 import { Habit, HabitProgressEvent } from "@/types/habit";
 import { Button } from "@/components/ui/button";
@@ -17,14 +15,14 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CalendarViewProps {
-  habits: Habit[];
+  habit: Habit;
   progressEvents: HabitProgressEvent[];
   selectedDate: Date;
   onDateSelect: (date: Date) => void;
 }
 
 export function CalendarView({
-  habits,
+  habit,
   progressEvents,
   selectedDate,
   onDateSelect,
@@ -56,57 +54,19 @@ export function CalendarView({
 
   // Pre-compute streak info for all dates
   const streakInfo = useMemo(() => {
-    const info: Record<
-      string,
-      {
-        isComplete: boolean;
-        prevComplete: boolean;
-        nextComplete: boolean;
-        isWithinStreak: boolean;
-        hasProgress: boolean;
-      }
-    > = {};
-    dates.forEach((date) => {
-      const dateStr = normalizeDate(date);
-      const scheduledHabits = getHabitsForDate(habits, date);
-      const completedCount = scheduledHabits.filter((h) =>
-        isHabitCompleteOnDate(h, progressEvents, dateStr),
-      ).length;
-      const isComplete =
-        scheduledHabits.length > 0 && completedCount === scheduledHabits.length;
+    const info: Record<string, DayStatistics> = {};
 
-      // Check if date is within any habit's streak
-      const isWithinStreak = habits.some((h) =>
-        isDateWithinStreak(h, progressEvents, date),
-      );
+    // Calculate day statistics for the habit
+    const today = new Date();
+    const stats = calculateDayStatistics(habit, progressEvents, today);
 
-      // Check if date has any progress
-      const hasProgress = habits.some(
-        (h) => getProgressValueOnDate(progressEvents, h.id, dateStr) > 0,
-      );
-
-      // Check if previous day is within streak
-      const prevDate = addDays(date, -1);
-      const prevWithinStreak = habits.some((h) =>
-        isDateWithinStreak(h, progressEvents, prevDate),
-      );
-
-      // Check if next day is within streak
-      const nextDate = addDays(date, 1);
-      const nextWithinStreak = habits.some((h) =>
-        isDateWithinStreak(h, progressEvents, nextDate),
-      );
-
-      info[dateStr] = {
-        isComplete,
-        prevComplete: prevWithinStreak,
-        nextComplete: nextWithinStreak,
-        isWithinStreak,
-        hasProgress,
-      };
+    // Create a map for quick lookup
+    stats.forEach((stat) => {
+      info[stat.date] = stat;
     });
+
     return info;
-  }, [dates, habits, progressEvents]);
+  }, [habit, progressEvents]);
 
   return (
     <div className="flex flex-col h-full max-w-lg mx-auto">
@@ -164,13 +124,22 @@ export function CalendarView({
           const isCurrentMonth = date.getMonth() === month;
           const isSelected = dateStr === normalizeDate(selectedDate);
           const isTodayDate = isToday(date);
-          const hasProgress = streakInfo[dateStr]?.hasProgress ?? false;
-          const scheduledHabits = getHabitsForDate(habits, date);
-          const completedCount = scheduledHabits.filter((h) =>
-            isHabitCompleteOnDate(h, progressEvents, dateStr),
-          ).length;
+          const dayStat = streakInfo[dateStr];
+          const hasProgress = (dayStat?.dayProgress ?? 0) > 0;
+          const isComplete = dayStat?.streak?.isGoalComplete ?? false;
+          const isWithinStreak = (dayStat?.streak ?? null) !== null;
 
-          const streak = streakInfo[dateStr];
+          // Check previous and next days for streak continuity
+          const prevDate = addDays(date, -1);
+          const prevDateStr = normalizeDate(prevDate);
+          const prevWithinStreak =
+            (streakInfo[prevDateStr]?.streak ?? null) !== null;
+
+          const nextDate = addDays(date, 1);
+          const nextDateStr = normalizeDate(nextDate);
+          const nextWithinStreak =
+            (streakInfo[nextDateStr]?.streak ?? null) !== null;
+
           const dayOfWeek = date.getDay();
 
           return (
@@ -180,12 +149,12 @@ export function CalendarView({
               isCurrentMonth={isCurrentMonth}
               isSelected={isSelected}
               isToday={isTodayDate}
-              completedHabits={completedCount}
-              isStreakStart={streak?.isWithinStreak && !streak?.prevComplete}
-              isStreakEnd={streak?.isWithinStreak && !streak?.nextComplete}
-              isStreakComplete={streak?.isComplete ?? false}
+              completedHabits={isComplete ? 1 : 0}
+              isStreakStart={isWithinStreak && !prevWithinStreak}
+              isStreakEnd={isWithinStreak && !nextWithinStreak}
+              isStreakComplete={isComplete}
               hasProgress={hasProgress}
-              isWithinStreak={streak?.isWithinStreak ?? false}
+              isWithinStreak={isWithinStreak}
               isFirstDayOfWeek={dayOfWeek === 0}
               isLastDayOfWeek={dayOfWeek === 6}
               onClick={() => onDateSelect(date)}

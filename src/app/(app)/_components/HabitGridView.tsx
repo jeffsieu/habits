@@ -15,7 +15,7 @@ import {
   getProgressValueOnDate,
   addDays,
   isStreakSecure,
-  isDateWithinStreak,
+  shouldShowCheckmark,
 } from "@/lib/habit-utils";
 import { HabitIconDisplay } from "@/lib/habit-icons";
 import { cn } from "@/lib/utils";
@@ -116,9 +116,9 @@ function HabitRow({
         const isOccurrenceBased =
           habit.recordingType === RecordingType.COUNT ||
           habit.recordingType === RecordingType.VALUE;
-        // Check if this day is within the active streak despite having no progress
+        // Check if this day should show a checkmark despite having no progress
         const isWithinStreak =
-          !hasProgress && isDateWithinStreak(habit, progressEvents, date);
+          !hasProgress && shouldShowCheckmark(habit, progressEvents, date);
 
         return (
           <td
