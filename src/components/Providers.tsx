@@ -3,7 +3,7 @@
 import { ReactNode } from "react";
 import { SessionProvider } from "next-auth/react";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { DatabaseProvider } from "@/contexts/database-provider";
 import { HabitsProvider } from "@/contexts/habits-context";
 import { queryClient } from "@/lib/query-client";

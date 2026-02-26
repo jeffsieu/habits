@@ -2,9 +2,9 @@
 
 import { ReactNode, useState, useEffect } from "react";
 import { useHabitsContext } from "@/contexts/habits-context";
-import { AppSidebar } from "@/components/app-sidebar";
-import { MobileBottomNav } from "@/components/mobile-bottom-nav";
-import { MobileAppBar } from "@/components/mobile-app-bar";
+import { AppSidebar } from "@/components/AppSidebar";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { MobileAppBar } from "@/components/MobileAppBar";
 import { useRandomQuote } from "@/hooks/use-random-quote";
 import { Sparkles } from "lucide-react";
 

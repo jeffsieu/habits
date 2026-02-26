@@ -1,7 +1,7 @@
 "use client";
 
 import { use } from "react";
-import { HabitDetailContent } from "@/components/habit-detail-content";
+import { HabitDetailContent } from "./_components/HabitDetailContent";
 
 interface HabitPageProps {
   params: Promise<{

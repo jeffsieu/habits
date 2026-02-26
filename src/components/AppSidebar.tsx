@@ -40,8 +40,8 @@ import {
   SheetTrigger,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { SidebarAuth } from "@/components/sidebar-auth";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { SidebarAuth } from "@/components/SidebarAuth";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   DndContext,
   closestCenter,

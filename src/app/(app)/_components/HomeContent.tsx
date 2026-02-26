@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useHabitsContext } from "@/contexts/habits-context";
-import { HabitGridView } from "@/components/habit-grid-view";
-import { HabitListView } from "@/components/habit-list-view";
-import { HabitForm } from "@/components/habit-form";
-import { SyncPromptDialog } from "@/components/sync-prompt-dialog";
+import { HabitGridView } from "./HabitGridView";
+import { HabitListView } from "./HabitListView";
+import { HabitForm } from "@/components/habits/HabitForm";
+import { SyncPromptDialog } from "./SyncPromptDialog";
 import { CreateHabitInput } from "@/types/habit";
 
 export function HomeContent() {

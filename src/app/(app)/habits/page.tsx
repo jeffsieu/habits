@@ -1,7 +1,7 @@
 "use client";
 
 import { useHabitsContext } from "@/contexts/habits-context";
-import { MobileHabitsList } from "@/components/mobile-habits-list";
+import { MobileHabitsList } from "./_components/MobileHabitsList";
 
 export default function HabitsPage() {
   const { habits, tags, progressEvents, reorderHabits } = useHabitsContext();

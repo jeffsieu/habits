@@ -18,8 +18,8 @@ import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Plus, Minus, Edit3 } from "lucide-react";
-import { ValueInputDialog } from "@/components/value-input-dialog";
-import { HorizontalDatePicker } from "@/components/horizontal-date-picker";
+import { ValueInputDialog } from "./ValueInputDialog";
+import { HorizontalDatePicker } from "./HorizontalDatePicker";
 
 interface HabitListViewProps {
   habits: Habit[];

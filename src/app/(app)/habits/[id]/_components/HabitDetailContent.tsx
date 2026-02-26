@@ -1,8 +1,8 @@
 "use client";
 
 import { useHabitsContext } from "@/contexts/habits-context";
-import { CalendarView } from "@/components/calendar-view";
-import { HabitForm } from "@/components/habit-form";
+import { CalendarView } from "./CalendarView";
+import { HabitForm } from "@/components/habits/HabitForm";
 import {
   CreateHabitInput,
   GoalInterval,
