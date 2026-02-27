@@ -183,7 +183,7 @@ export function HabitIconDisplay({
   iconName?: string | null;
   className?: string;
 }) {
-  const icon = iconName && HABIT_ICONS[iconName] ? iconName : "CircleDot";
+  const icon = iconName && HABIT_ICONS[iconName] ? iconName : "circle-dot";
   const Icon = HABIT_ICONS[icon];
   return <Icon className={className} />;
 }
