@@ -12,12 +12,13 @@ import {
   normalizeDate,
   isHabitScheduledForDate,
   getProgressValueOnDate,
+  calculateCurrentStreak,
 } from "@/lib/habit-utils";
 import { HabitIconDisplay } from "@/lib/habit-icons";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, Edit3 } from "lucide-react";
+import { Plus, Minus, Edit3, Flame } from "lucide-react";
 import { ValueInputDialog } from "./ValueInputDialog";
 import { HorizontalDatePicker } from "./HorizontalDatePicker";
 
@@ -158,6 +159,8 @@ function HabitListItem({
   const isValue = habit.recordingType === RecordingType.VALUE;
   const isComplete = isYesNo ? currentValue >= 1 : false;
 
+  const streak = calculateCurrentStreak(habit, progressEvents);
+
   const handleCheckboxChange = (checked: boolean) => {
     onLogProgress(habit.id, dateStr, checked ? 1 : 0);
   };
@@ -201,7 +204,22 @@ function HabitListItem({
         >
           <HabitIconDisplay iconName={habit.icon} className="w-4 h-4" />
         </div>
-        <span className="font-medium truncate">{habit.name}</span>
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <span className="font-medium truncate">{habit.name}</span>
+          {streak > 0 && (
+            <div
+              className={cn(
+                "flex items-center gap-1 px-1.5 py-0.5 rounded-full shrink-0",
+                "bg-warning/15 text-warning",
+              )}
+            >
+              <Flame className="w-3 h-3" />
+              <span className="text-xs font-semibold tabular-nums">
+                {streak}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Right side: Controls */}
