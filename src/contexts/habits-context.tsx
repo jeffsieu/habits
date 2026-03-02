@@ -170,6 +170,25 @@ export function HabitsProvider({ children }: HabitsProviderProps) {
 
       // Progress actions
       logProgress: async (input) => {
+        // Handle -1 as deletion signal
+        if (input.value === -1) {
+          const existing = progressEvents.find(
+            (p) => p.habitId === input.habitId && p.date === input.date,
+          );
+          if (existing) {
+            await deleteProgressMutation.mutateAsync(existing.id);
+            return existing;
+          }
+          // If no existing record, just return a dummy one (shouldn't happen)
+          return {
+            id: "",
+            habitId: input.habitId,
+            date: input.date,
+            value: 0,
+            note: null,
+            createdAt: new Date().toISOString(),
+          };
+        }
         const result = await logProgressMutation.mutateAsync(input);
         return result;
       },

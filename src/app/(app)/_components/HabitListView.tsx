@@ -16,9 +16,8 @@ import {
 } from "@/lib/habit-utils";
 import { HabitIconDisplay } from "@/lib/habit-icons";
 import { cn } from "@/lib/utils";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, Edit3, Flame } from "lucide-react";
+import { Plus, Minus, Edit3, Flame, Check, X } from "lucide-react";
 import { ValueInputDialog } from "./ValueInputDialog";
 import { HorizontalDatePicker } from "./HorizontalDatePicker";
 
@@ -46,17 +45,19 @@ export function HabitListView({
       isHabitScheduledForDate(habit, selectedDate),
     );
 
-    // Sort habits: incomplete first, completed at bottom
+    // Sort habits: non-recorded first, recorded (yes or no) at bottom
     // Within each group, maintain custom order (order field)
     return filtered.sort((a, b) => {
-      const aProgress = getProgressValueOnDate(progressEvents, a.id, dateStr);
-      const bProgress = getProgressValueOnDate(progressEvents, b.id, dateStr);
-      const aCompleted = aProgress > 0;
-      const bCompleted = bProgress > 0;
+      const aHasRecord = progressEvents.some(
+        (event) => event.habitId === a.id && event.date === dateStr,
+      );
+      const bHasRecord = progressEvents.some(
+        (event) => event.habitId === b.id && event.date === dateStr,
+      );
 
-      // Primary sort: completion status
-      if (aCompleted !== bCompleted) {
-        return aCompleted ? 1 : -1;
+      // Primary sort: recorded status (no record = top, has record = bottom)
+      if (aHasRecord !== bHasRecord) {
+        return aHasRecord ? 1 : -1;
       }
 
       // Secondary sort: custom order (lower order numbers come first)
@@ -157,12 +158,23 @@ function HabitListItem({
   const isYesNo = habit.recordingType === RecordingType.YES_NO;
   const isCount = habit.recordingType === RecordingType.COUNT;
   const isValue = habit.recordingType === RecordingType.VALUE;
-  const isComplete = isYesNo ? currentValue >= 1 : false;
 
   const streak = calculateCurrentStreak(habit, progressEvents);
 
-  const handleCheckboxChange = (checked: boolean) => {
-    onLogProgress(habit.id, dateStr, checked ? 1 : 0);
+  // Check if there's an actual progress event for this date (to distinguish no record from explicit 0)
+  const hasProgressEvent = progressEvents.some(
+    (event) => event.habitId === habit.id && event.date === dateStr,
+  );
+
+  // For yes/no habits: cycle through no record → yes (1) → no (0) → no record
+  const handleYesNoClick = () => {
+    if (!hasProgressEvent) {
+      onLogProgress(habit.id, dateStr, 1); // No record → Yes
+    } else if (currentValue === 1) {
+      onLogProgress(habit.id, dateStr, 0); // Yes → No (explicit 0)
+    } else {
+      onLogProgress(habit.id, dateStr, -1); // No → Delete (use -1 to signal deletion)
+    }
   };
 
   const handleIncrement = () => {
@@ -184,26 +196,29 @@ function HabitListItem({
   };
 
   return (
-    <Link
-      href={`/habits/${habit.id}`}
+    <div
       className={cn(
         "flex items-center justify-between px-4 py-3 bg-card",
         "hover:bg-accent/50 active:bg-accent/70 transition-colors",
+        isYesNo && "cursor-pointer",
       )}
+      onClick={isYesNo ? handleYesNoClick : undefined}
     >
       {/* Left side: Icon + Name */}
       <div className="flex items-center gap-3 min-w-0 flex-1">
-        <div
-          className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
+        <Link
+          href={`/habits/${habit.id}`}
+          className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center hover:opacity-80 transition-opacity"
           style={{
             backgroundColor: habit.color
               ? `${habit.color}15`
               : "hsl(var(--muted))",
             color: habit.color || undefined,
           }}
+          onClick={(e) => e.stopPropagation()}
         >
           <HabitIconDisplay iconName={habit.icon} className="w-4 h-4" />
-        </div>
+        </Link>
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <span className="font-medium truncate">{habit.name}</span>
           {streak > 0 && (
@@ -223,13 +238,33 @@ function HabitListItem({
       </div>
 
       {/* Right side: Controls */}
-      <div className="shrink-0 ml-3" onClick={(e) => e.preventDefault()}>
+      <div className="shrink-0 ml-3" onClick={(e) => e.stopPropagation()}>
         {isYesNo && (
-          <Checkbox
-            checked={isComplete}
-            onCheckedChange={handleCheckboxChange}
-            className="w-6 h-6"
-          />
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "h-9 w-9 rounded-md transition-colors",
+              currentValue === 1 &&
+                "bg-green-500/15 text-green-600 hover:bg-green-500/25 hover:text-green-600",
+              hasProgressEvent &&
+                currentValue === 0 &&
+                "bg-red-500/15 text-red-600 hover:bg-red-500/25 hover:text-red-600",
+              !hasProgressEvent &&
+                "text-muted-foreground hover:text-foreground",
+            )}
+            onClick={handleYesNoClick}
+          >
+            {currentValue === 1 && (
+              <Check className="h-5 w-5" strokeWidth={2.5} />
+            )}
+            {hasProgressEvent && currentValue === 0 && (
+              <X className="h-5 w-5" strokeWidth={2.5} />
+            )}
+            {!hasProgressEvent && (
+              <div className="h-5 w-5 rounded border-2 border-current" />
+            )}
+          </Button>
         )}
         {isCount && (
           <div className="flex items-center gap-1">
@@ -281,6 +316,6 @@ function HabitListItem({
           </>
         )}
       </div>
-    </Link>
+    </div>
   );
 }

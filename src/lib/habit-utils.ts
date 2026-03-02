@@ -485,12 +485,10 @@ function calculateNextDayStreak(
 
   // Determine if streak continues
   let streakContinues = false;
-  let incrementLength = false;
 
   if (isGoalComplete) {
     // Goal is complete - streak definitely continues
     streakContinues = true;
-    incrementLength = true;
   } else if (dayProgress > 0) {
     // Has progress on scheduled day but goal not complete yet
     // Check if remaining days can still achieve the goal
@@ -501,7 +499,6 @@ function calculateNextDayStreak(
       // For COUNT/VALUE, be optimistic - as long as there's at least one day left
       streakContinues = remainingScheduledDays >= 1 || remainingProgress === 0;
     }
-    incrementLength = streakContinues;
   } else {
     // No progress on scheduled day
     // Check if we can still achieve the goal with remaining days
@@ -512,7 +509,6 @@ function calculateNextDayStreak(
       // For COUNT/VALUE with no progress, need at least 1 day to make up the difference
       streakContinues = remainingScheduledDays >= 1 && remainingProgress > 0;
     }
-    incrementLength = false; // Don't increment on days with no progress
   }
 
   // Handle bad habits specially
@@ -523,7 +519,6 @@ function calculateNextDayStreak(
     }
     // For bad habits, if we haven't exceeded, the streak continues
     streakContinues = true;
-    incrementLength = isScheduled && dayProgress <= goalProgress;
   }
 
   const previousLength = previousStreak?.newLength ?? 0;

@@ -19,7 +19,7 @@ import {
 } from "@/lib/habit-utils";
 import { HabitIconDisplay } from "@/lib/habit-icons";
 import { cn } from "@/lib/utils";
-import { Plus, Minus, Flame, Check, ArrowRight } from "lucide-react";
+import { Plus, Minus, Flame, Check, ArrowRight, X } from "lucide-react";
 
 interface HabitGridViewProps {
   habits: Habit[];
@@ -93,7 +93,7 @@ function HabitRow({
           </div>
           <Link
             href={`/habits/${habit.id}`}
-            className="text-sm font-medium text-foreground truncate max-w-35 hover:underline hover:decoration-dotted hover:decoration-foreground/50 underline-offset-2"
+            className="text-sm font-medium text-foreground truncate max-w-35 hover:underline hover:decoration-dotted underline-offset-2"
           >
             {habit.name}
           </Link>
@@ -109,8 +109,13 @@ function HabitRow({
           habit.id,
           dateStr,
         );
+        // Check if there's an actual progress event for this date
+        const hasProgressEvent = progressEvents.some(
+          (event) => event.habitId === habit.id && event.date === dateStr,
+        );
         // Any non-zero progress counts as "completed" for visual styling
         const hasProgress = currentValue > 0;
+        const isExplicitNo = hasProgressEvent && currentValue === 0;
         const isToday = dateStr === todayStr;
         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
         const isOccurrenceBased =
@@ -139,7 +144,7 @@ function HabitRow({
                     ? "habit-cell-striped cursor-not-allowed"
                     : hasProgress
                       ? isToday
-                        ? "bg-primary"
+                        ? "bg-green-500/15"
                         : "bg-muted-foreground/60"
                       : isWithinStreak
                         ? isToday
@@ -157,7 +162,7 @@ function HabitRow({
                       "text-[10px] font-semibold leading-none z-10",
                       hasProgress
                         ? isToday
-                          ? "text-primary-foreground"
+                          ? "text-green-600"
                           : "text-background"
                         : "text-foreground",
                     )}
@@ -195,7 +200,7 @@ function HabitRow({
                         currentValue > 0
                           ? hasProgress
                             ? isToday
-                              ? "hover:bg-black/20 text-primary-foreground"
+                              ? "hover:bg-green-500/25 text-green-600"
                               : "hover:bg-black/20 text-background"
                             : "hover:bg-primary/30 text-foreground"
                           : "text-muted-foreground/50 cursor-not-allowed",
@@ -213,7 +218,7 @@ function HabitRow({
                         "flex-1 flex items-center justify-center rounded-r-sm transition-colors",
                         hasProgress
                           ? isToday
-                            ? "hover:bg-black/20 text-primary-foreground"
+                            ? "hover:bg-green-500/25 text-green-600"
                             : "hover:bg-black/20 text-background"
                           : "hover:bg-primary/30 text-foreground",
                       )}
@@ -225,7 +230,7 @@ function HabitRow({
                 )}
               </div>
             ) : (
-              // Yes/No: show toggle button with checkmark when complete
+              // Yes/No: show toggle button with checkmark when complete, X when explicit no
               <button
                 onClick={() => isScheduled && onCellClick(habit, date)}
                 disabled={!isScheduled}
@@ -235,24 +240,30 @@ function HabitRow({
                   isScheduled
                     ? hasProgress
                       ? isToday
-                        ? "bg-primary hover:bg-primary/90"
+                        ? "bg-green-500/15 hover:bg-green-500/25"
                         : "bg-muted-foreground/60 hover:bg-muted-foreground/70"
-                      : isWithinStreak
+                      : isExplicitNo
                         ? isToday
-                          ? "bg-muted/80 hover:bg-primary/30 border-2 border-primary/40"
+                          ? "bg-red-500/20 hover:bg-red-500/30"
                           : "bg-muted/50 hover:bg-muted border-2 border-muted-foreground/30"
-                        : isToday
-                          ? "bg-muted/80 hover:bg-primary/30 border border-primary/30"
-                          : "bg-muted/50 hover:bg-muted"
+                        : isWithinStreak
+                          ? isToday
+                            ? "bg-muted/80 hover:bg-primary/30 border-2 border-primary/40"
+                            : "bg-muted/50 hover:bg-muted border-2 border-muted-foreground/30"
+                          : isToday
+                            ? "bg-muted/80 hover:bg-primary/30 border border-primary/30"
+                            : "bg-muted/50 hover:bg-muted"
                     : "habit-cell-striped cursor-not-allowed",
                 )}
                 title={
                   isScheduled
                     ? hasProgress
-                      ? "Completed - click to undo"
-                      : isWithinStreak
-                        ? "Within active streak"
-                        : "Click to complete"
+                      ? "Yes - click to mark no"
+                      : isExplicitNo
+                        ? "No - click to clear"
+                        : isWithinStreak
+                          ? "Within active streak"
+                          : "Click to mark yes"
                     : "Not scheduled"
                 }
               >
@@ -260,20 +271,34 @@ function HabitRow({
                   <Check
                     className={cn(
                       "w-3 h-3",
-                      isToday ? "text-primary-foreground" : "text-background",
+                      isToday ? "text-green-600" : "text-background",
                     )}
                     strokeWidth={3}
                   />
                 )}
-                {isScheduled && isWithinStreak && !hasProgress && (
-                  <ArrowRight
+                {isScheduled && isExplicitNo && (
+                  <X
                     className={cn(
                       "w-3 h-3",
-                      isToday ? "text-primary/60" : "text-muted-foreground/50",
+                      isToday ? "text-red-600" : "text-muted-foreground/50",
                     )}
-                    strokeWidth={2}
+                    strokeWidth={3}
                   />
                 )}
+                {isScheduled &&
+                  isWithinStreak &&
+                  !hasProgress &&
+                  !isExplicitNo && (
+                    <ArrowRight
+                      className={cn(
+                        "w-3 h-3",
+                        isToday
+                          ? "text-primary/60"
+                          : "text-muted-foreground/50",
+                      )}
+                      strokeWidth={2}
+                    />
+                  )}
               </button>
             )}
           </td>
@@ -306,18 +331,20 @@ export function HabitGridView({
   const todayStr = normalizeDate(today);
   const dateColumns = useMemo(() => getDateColumns(today), [today]);
 
-  // Sort habits: incomplete first, completed at bottom
+  // Sort habits: non-recorded first, recorded (yes or no) at bottom
   // Within each group, maintain custom order (order field)
   const sortedHabits = useMemo(() => {
     return [...habits].sort((a, b) => {
-      const aProgress = getProgressValueOnDate(progressEvents, a.id, todayStr);
-      const bProgress = getProgressValueOnDate(progressEvents, b.id, todayStr);
-      const aCompleted = aProgress > 0;
-      const bCompleted = bProgress > 0;
+      const aHasRecord = progressEvents.some(
+        (event) => event.habitId === a.id && event.date === todayStr,
+      );
+      const bHasRecord = progressEvents.some(
+        (event) => event.habitId === b.id && event.date === todayStr,
+      );
 
-      // Primary sort: completion status
-      if (aCompleted !== bCompleted) {
-        return aCompleted ? 1 : -1;
+      // Primary sort: recorded status (no record = top, has record = bottom)
+      if (aHasRecord !== bHasRecord) {
+        return aHasRecord ? 1 : -1;
       }
 
       // Secondary sort: custom order (lower order numbers come first)
@@ -333,10 +360,18 @@ export function HabitGridView({
       dateStr,
     );
 
-    if (currentValue > 0) {
-      onLogProgress(habit.id, dateStr, 0);
+    // Check if there's an actual progress event for this date
+    const hasProgressEvent = progressEvents.some(
+      (event) => event.habitId === habit.id && event.date === dateStr,
+    );
+
+    // Cycle through: no record → yes (1) → no (0) → no record
+    if (!hasProgressEvent) {
+      onLogProgress(habit.id, dateStr, 1); // No record → Yes
+    } else if (currentValue === 1) {
+      onLogProgress(habit.id, dateStr, 0); // Yes → No (explicit 0)
     } else {
-      onLogProgress(habit.id, dateStr, 1);
+      onLogProgress(habit.id, dateStr, -1); // No → Delete (use -1 to signal deletion)
     }
   };
 
