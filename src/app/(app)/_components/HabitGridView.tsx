@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
+import { useToday } from "@/components/contexts/TodayProvider";
 import {
   Habit,
   HabitProgressEvent,
@@ -327,7 +328,7 @@ export function HabitGridView({
   onLogProgress,
   onAddHabit,
 }: HabitGridViewProps) {
-  const today = useMemo(() => new Date(), []);
+  const today = useToday();
   const todayStr = normalizeDate(today);
   const dateColumns = useMemo(() => getDateColumns(today), [today]);
 

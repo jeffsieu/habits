@@ -1,6 +1,6 @@
 "use client";
 
-import { useHabitsContext } from "@/contexts/habits-context";
+import { useHabitsContext } from "@/components/contexts/HabitsProvider";
 import { signIn, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { LogIn, LogOut, User } from "lucide-react";

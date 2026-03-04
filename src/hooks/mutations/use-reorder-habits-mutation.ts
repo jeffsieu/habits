@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Habit } from "@/types/habit";
-import { useDatabaseContext } from "@/contexts/database-provider";
+import { useDatabaseContext } from "@/components/contexts/DatabaseProvider";
 import { queryKeys } from "@/lib/query-keys";
 
 /**

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useToday } from "@/components/contexts/TodayProvider";
 import {
   Habit,
   HabitProgressEvent,
@@ -35,7 +36,8 @@ export function HabitListView({
   onLogProgress,
   onAddHabit,
 }: HabitListViewProps) {
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const today = useToday();
+  const [selectedDate, setSelectedDate] = useState(today);
 
   const dateStr = useMemo(() => normalizeDate(selectedDate), [selectedDate]);
 

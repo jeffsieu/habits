@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useState, useEffect } from "react";
-import { useHabitsContext } from "@/contexts/habits-context";
+import { useHabitsContext } from "@/components/contexts/HabitsProvider";
 import { AppSidebar } from "@/components/AppSidebar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { MobileAppBar } from "@/components/MobileAppBar";

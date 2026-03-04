@@ -1,6 +1,6 @@
 "use client";
 
-import { useHabitsContext } from "@/contexts/habits-context";
+import { useHabitsContext } from "@/components/contexts/HabitsProvider";
 import { CalendarView } from "./CalendarView";
 import { HabitForm } from "@/components/habits/HabitForm";
 import {

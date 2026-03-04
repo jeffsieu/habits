@@ -1,6 +1,6 @@
 "use client";
 
-import { useHabitsContext } from "@/contexts/habits-context";
+import { useHabitsContext } from "@/components/contexts/HabitsProvider";
 import { MobileHabitsList } from "./_components/MobileHabitsList";
 
 export default function HabitsPage() {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useDatabaseContext } from "@/contexts/database-provider";
+import { useDatabaseContext } from "@/components/contexts/DatabaseProvider";
 import { queryKeys } from "@/lib/query-keys";
 
 /**

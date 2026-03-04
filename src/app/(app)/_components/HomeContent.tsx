@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useHabitsContext } from "@/contexts/habits-context";
+import { useHabitsContext } from "@/components/contexts/HabitsProvider";
 import { HabitGridView } from "./HabitGridView";
 import { HabitListView } from "./HabitListView";
 import { HabitForm } from "@/components/habits/HabitForm";

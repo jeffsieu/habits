@@ -2,7 +2,7 @@
 
 import { createContext, useContext, ReactNode, useMemo } from "react";
 import { useSession } from "next-auth/react";
-import { useDatabaseContext } from "@/contexts/database-provider";
+import { useDatabaseContext } from "@/components/contexts/DatabaseProvider";
 import { useHabits } from "@/hooks/queries/use-habits-query";
 import { useTags } from "@/hooks/queries/use-tags-query";
 import { useProgress } from "@/hooks/queries/use-progress-query";
